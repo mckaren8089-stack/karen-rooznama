@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {mkdtempSync} from "node:fs";
+import {mkdtempSync,writeFileSync,mkdirSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 const d=mkdtempSync(join(tmpdir(),"rooznama-")),pdf=join(d,"source.pdf");
@@ -27,3 +27,5 @@ for(let i=2;i<14;i++){
  groups.push({month,days,rows});
 }
 console.log("TOTAL ROWS",groups.reduce((n,x)=>n+x.rows.length,0));
+mkdirSync("staging",{recursive:true});
+writeFileSync("staging/official-1405-rows.json",JSON.stringify({source:"University of Tehran official calendar 1405",months:groups},null,2));
