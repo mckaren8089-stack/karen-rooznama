@@ -1,5 +1,11 @@
 name: Check official calendar source
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-official.yml'
+      - 'data/years/**'
+      - 'scripts/check-official-source.mjs'
   workflow_dispatch:
   schedule:
     - cron: '23 9 10 * *'
