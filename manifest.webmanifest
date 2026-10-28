@@ -1,0 +1,19 @@
+{
+  "name": "روزنمای کارن",
+  "short_name": "روزنمای کارن",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#171614",
+  "theme_color": "#171614",
+  "description": "تقویم فارسی شمسی و میلادی",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
