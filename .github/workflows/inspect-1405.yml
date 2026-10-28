@@ -21,3 +21,8 @@ jobs:
         run: node scripts/inspect-calendar-1405.mjs
       - name: Group occasion cells by day
         run: node scripts/probe-rows-1405.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: official-1405-rows
+          path: staging/official-1405-rows.json
+          retention-days: 1
