@@ -104,7 +104,7 @@ document.addEventListener("submit",e=>{
  }
  if(e.target.id==="noteform"){
   e.preventDefault();const value=e.target.querySelector("input").value.trim();if(!value)return;
-  const k=dateKey(selected);notes[k]=notes[k]||[];notes[k].push(value.slice(0,140));if(save())feedback="یادداشت برای "+formatJ(selected)+" ثبت شد.";render();
+  const k=dateKey(selected);notes[k]=notes[k]||[];if(notes[k].length>=200){feedback="حداکثر تعداد یادداشت برای این روز ثبت شده است؛ پیش از ادامه پشتیبان تهیه کن.";render();return;}notes[k].push(value.slice(0,140));if(save())feedback="یادداشت برای "+formatJ(selected)+" ثبت شد.";render();
  }
  if(e.target.id==="convertform"){
   e.preventDefault();const data=new FormData(e.target),y=Number(data.get("y")),m=Number(data.get("m")),d=Number(data.get("d"));
