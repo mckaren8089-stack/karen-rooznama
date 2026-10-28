@@ -22,4 +22,3 @@ jobs:
           node-version: '22'
       - name: Probe Tehran University calendar PDF (no unreviewed imports)
         run: node scripts/check-official-source.mjs
-        continue-on-error: true
