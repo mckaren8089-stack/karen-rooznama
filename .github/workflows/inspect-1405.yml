@@ -19,3 +19,5 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y poppler-utils
       - name: Inspect layout with pdftotext
         run: node scripts/inspect-calendar-1405.mjs
+      - name: Group occasion cells by day
+        run: node scripts/probe-rows-1405.mjs
