@@ -1,9 +1,10 @@
-import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday} from "./core.mjs";
+import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear} from "./core.mjs";
 import {normalizeNotes,noteCount,sortedDays,exportNotes,importNotes} from "./notes.mjs";
 const root=document.getElementById("app");
 const today=()=>tehran().day;
 let selected=today(),month={y:selected.y,m:selected.m},view="month";
-let converterMode="j2g",conversion=null,convertError="",feedback="";
+let converterMode="j2g",conversion=null,convertError="",feedback="",editing=null;
+const requestedYears=new Set();
 let notes=Object.create(null);
 try{notes=normalizeNotes(JSON.parse(localStorage.getItem("karen-rooznama-notes-v1")||"{}"));}catch{notes=Object.create(null);}
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -29,7 +30,12 @@ function grid(){
  return html+'</div><p class="muted calendarhint">روز دلخواه را لمس کن تا جزئیات و یادداشت‌های همان روز را ببینی. عدد کوچک کنار روز، تعداد یادداشت‌هاست.</p>';
 }
 function noteItems(day,items){
- return items.map((x,i)=>'<div class="noteitem"><span>'+escape(x)+'</span><button type="button" class="remove" data-act="delete" data-key="'+day+'" data-index="'+i+'" aria-label="حذف یادداشت">×</button></div>').join("");
+ return items.map((x,i)=>{
+  if(editing&&editing.key===day&&editing.index===i){
+   return '<form class="noteedit" id="editform" data-key="'+day+'" data-index="'+i+'"><input name="content" maxlength="140" required aria-label="ویرایش یادداشت" value="'+escape(x)+'"><button type="submit" class="btn primary">ذخیره</button><button type="button" class="btn" data-act="cancel-edit">لغو</button></form>';
+  }
+  return '<div class="noteitem"><span>'+escape(x)+'</span><button type="button" class="noteeditbtn" data-act="edit" data-key="'+day+'" data-index="'+i+'" aria-label="ویرایش یادداشت">ویرایش</button><button type="button" class="remove" data-act="delete" data-key="'+day+'" data-index="'+i+'" aria-label="حذف یادداشت">×</button></div>';
+ }).join("");
 }
 function details(){
  const ms=toMs(selected.y,selected.m,selected.d),day=dateKey(selected),list=notes[day]||[],events=eventsOn(selected);
@@ -50,6 +56,10 @@ function notesPage(){
  return '<main class="card"><div class="head"><h2>همه یادداشت‌های من</h2><span class="countpill">'+fa(count)+' یادداشت</span></div><p class="muted">یادداشت‌ها به روز مربوط وصل‌اند. با لمس تاریخ، همان روز در تقویم باز می‌شود. اطلاعات فقط روی همین مرورگر ذخیره می‌شوند.</p><div class="backuptools"><button class="btn" type="button" data-act="export" '+(count?'':'disabled')+'>دریافت پشتیبان JSON</button><button class="btn" type="button" data-act="import">بازیابی از JSON</button><input type="file" id="backupfile" accept=".json,application/json" hidden aria-label="انتخاب فایل پشتیبان JSON"></div>'+(!count?'<div class="empty">هنوز یادداشتی ثبت نشده است. از نمای ماه، یک روز را انتخاب کن و یادداشت بنویس.</div>':'<div class="notehistory">'+days.map(day=>{const bits=day.split("-").map(Number),j={y:bits[0],m:bits[1],d:bits[2]};return '<section class="historyday"><div class="historyhead"><button type="button" class="btn" data-act="open-noted-day" data-key="'+day+'">'+formatJ(j)+' · مشاهده در تقویم</button><span class="muted">'+fa(notes[day].length)+' یادداشت</span></div>'+noteItems(day,notes[day])+'</section>';}).join("")+'</div>')+'<p class="muted">بازیابی با یادداشت‌های موجود ادغام می‌شود و نسخه تکراری یک متن را دوباره وارد نمی‌کند. برای انتقال به دستگاه دیگر، فایل JSON را خودت منتقل کن.</p></main>';
 }
 function render(){
+ const years=[month.y,selected.y];
+ for(const y of years){
+  if(!requestedYears.has(y)){requestedYears.add(y);loadYear(y).then(ok=>{if(ok)render();});}
+ }
  root.innerHTML=header()+(feedback?'<div class="message" role="status">'+escape(feedback)+'</div>':'')+(view==="month"?monthPage():view==="year"?yearPage():view==="convert"?convertPage():notesPage())+'</div>';
 }
 function showDay(){render();if(window.matchMedia&&matchMedia("(max-width:760px)").matches)requestAnimationFrame(()=>document.getElementById("details")?.scrollIntoView({behavior:"smooth",block:"start"}));}
@@ -74,7 +84,9 @@ document.addEventListener("click",e=>{
  case "pick":selected=jalali(Number(b.dataset.ms));month={y:selected.y,m:selected.m};showDay();return;
  case "openmonth":month.m=Number(b.dataset.m);selected={y:month.y,m:month.m,d:1};view="month";break;
  case "open-noted-day":{const d=b.dataset.key.split("-").map(Number);selected={y:d[0],m:d[1],d:d[2]};month={y:selected.y,m:selected.m};view="month";showDay();return;}
- case "delete":{const k=b.dataset.key,items=notes[k]||[];items.splice(Number(b.dataset.index),1);if(!items.length)delete notes[k];if(save())feedback="یادداشت حذف شد.";break;}
+ case "edit":editing={key:b.dataset.key,index:Number(b.dataset.index)};break;
+ case "cancel-edit":editing=null;break;
+ case "delete":{if(!confirm("این یادداشت حذف شود؟"))return;const k=b.dataset.key,items=notes[k]||[];items.splice(Number(b.dataset.index),1);if(!items.length)delete notes[k];editing=null;if(save())feedback="یادداشت حذف شد.";break;}
  case "jump":if(conversion){selected=jalali(conversion.ms);month={y:selected.y,m:selected.m};view="month";showDay();return;}break;
  case "export":{const blob=new Blob([exportNotes(notes)],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="karen-rooznama-notes.json";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);feedback="فایل پشتیبان برای دریافت آماده شد.";break;}
  case "import":document.getElementById("backupfile")?.click();return;
@@ -83,6 +95,13 @@ document.addEventListener("click",e=>{
  render();
 });
 document.addEventListener("submit",e=>{
+ if(e.target.id==="editform"){
+  e.preventDefault();
+  const key=e.target.dataset.key,index=Number(e.target.dataset.index),value=e.target.elements.content.value.trim();
+  if(value&&notes[key]&&index>=0&&index<notes[key].length){
+   notes[key][index]=value.slice(0,140);editing=null;if(save())feedback="ویرایش یادداشت ذخیره شد.";render();
+  }
+ }
  if(e.target.id==="noteform"){
   e.preventDefault();const value=e.target.querySelector("input").value.trim();if(!value)return;
   const k=dateKey(selected);notes[k]=notes[k]||[];notes[k].push(value.slice(0,140));if(save())feedback="یادداشت برای "+formatJ(selected)+" ثبت شد.";render();
