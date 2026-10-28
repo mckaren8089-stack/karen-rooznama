@@ -39,8 +39,15 @@ export function importNotes(json,current){
   let newNotes=0;
   for(const [day,items] of Object.entries(imported)){
     const existing=merged[day]||[];
-    for(const item of items){
-      if(!existing.includes(item)&&existing.length<MAX_PER_DAY){existing.push(item);newNotes++;}
+    const have=new Map(),needed=new Map();
+    for(const text of existing)have.set(text,(have.get(text)||0)+1);
+    for(const text of items){
+      needed.set(text,(needed.get(text)||0)+1);
+      if((have.get(text)||0)<needed.get(text)&&existing.length<MAX_PER_DAY){
+        existing.push(text);
+        have.set(text,(have.get(text)||0)+1);
+        newNotes++;
+      }
     }
     if(existing.length)merged[day]=existing;
   }
