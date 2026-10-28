@@ -1,33 +1,118 @@
 import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday} from "./core.mjs";
-const root=document.getElementById("app"),today=()=>tehran().day;
-let current=today(),month={y:current.y,m:current.m},selected={...current},view="month",error="";
-let notes={};try{notes=JSON.parse(localStorage.getItem("karen-rooznama-notes-v1")||"{}")||{};}catch{notes={};}
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+import {normalizeNotes,noteCount,sortedDays,exportNotes,importNotes} from "./notes.mjs";
+const root=document.getElementById("app");
+const today=()=>tehran().day;
+let selected=today(),month={y:selected.y,m:selected.m},view="month";
+let converterMode="j2g",conversion=null,convertError="",feedback="";
+let notes=Object.create(null);
+try{notes=normalizeNotes(JSON.parse(localStorage.getItem("karen-rooznama-notes-v1")||"{}"));}catch{notes=Object.create(null);}
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const gdate=ms=>new Intl.DateTimeFormat("en-GB",{timeZone:"UTC",year:"numeric",month:"long",day:"numeric"}).format(new Date(ms));
-function save(){try{localStorage.setItem("karen-rooznama-notes-v1",JSON.stringify(notes));}catch{alert("ذخیره روی این دستگاه انجام نشد.");}}
-function header(){return '<div class="wrap"><header class="top"><div class="brand"><span class="logo">☀</span><div><h1>روزنمای کارن</h1><div class="muted">تقویم شمسی و میلادی · ساعت ایران</div></div></div><div><span class="clock">'+tehran().time+'</span> <button data-act="today" class="btn primary">امروز</button></div></header><nav class="tabs">'+[["month","ماه"],["year","سال"],["convert","تبدیل تاریخ"]].map(([id,label])=>'<button data-act="view" data-view="'+id+'" class="'+(view===id?"active":"")+'">'+label+'</button>').join("")+'</nav>';}
+const formatJ=a=>fa(a.d)+" "+months[a.m-1]+" "+fa(a.y);
+function save(){
+ try{localStorage.setItem("karen-rooznama-notes-v1",JSON.stringify(notes));return true;}
+ catch{feedback="ذخیره در مرورگر امکان‌پذیر نیست. فضای دستگاه و تنظیمات مرورگر را بررسی کن.";return false;}
+}
+function header(){
+ const now=tehran();
+ const tabs=[["month","ماه"],["year","سال"],["convert","تبدیل تاریخ"],["notes","یادداشت‌ها"]];
+ return '<div class="wrap"><header class="top"><div class="brand"><span class="logo" aria-hidden="true">☀</span><div><h1>روزنمای کارن</h1><div class="muted">تقویم شمسی و میلادی · ساعت ایران</div></div></div><div><span class="clock">'+now.time+'</span> <button data-act="today" class="btn primary">امروز</button></div></header><nav class="tabs" aria-label="ابزارهای روزنما">'+tabs.map(([id,label])=>'<button type="button" data-act="view" data-view="'+id+'" class="'+(view===id?"active":"")+'" aria-current="'+(view===id?"page":"false")+'">'+label+(id==="notes"&&noteCount(notes)?' <span class="tabcount">'+fa(noteCount(notes))+'</span>':'')+'</button>').join("")+'</nav>';
+}
 function nav(title){return '<div class="head"><div class="arrows"><button class="btn" data-act="prev" aria-label="قبلی">❯</button><button class="btn" data-act="next" aria-label="بعدی">❮</button></div><h2>'+title+'</h2></div>';}
-function grid(){const start=toMs(month.y,month.m,1),offset=weekday(start),n=shift(month.y,month.m,1),len=(toMs(n.y,n.m,1)-start)/86400000,total=Math.ceil((offset+len)/7)*7;
-let html='<div class="week">'+["ش","ی","د","س","چ","پ","ج"].map(x=>'<span>'+x+'</span>').join("")+'</div><div class="days">';
-for(let i=0;i<total;i++){const ms=start+(i-offset)*86400000,d=jalali(ms),g=gregorian(ms),inside=d.y===month.y&&d.m===month.m,chosen=compare(d,selected)===0,now=compare(d,today())===0,holiday=isHoliday(d,ms);
-html+='<button data-act="pick" data-ms="'+ms+'" class="day'+(inside?"":" out")+(chosen?" chosen":"")+(now?" now":"")+(holiday?" holiday":"")+'" aria-label="'+fa(d.d)+' '+months[d.m-1]+' '+fa(d.y)+'"><span class="num">'+fa(d.d)+'</span><span class="gr">'+g.d+'</span>'+(notes[dateKey(d)]?.length?'<small>•</small>':'')+'</button>';}
-return html+'</div>';}
-function details(){const ms=toMs(selected.y,selected.m,selected.d),list=notes[dateKey(selected)]||[],events=eventsOn(selected);
-const displayed=(weekday(ms)===6?'<div class="event h">جمعه · تعطیلی هفتگی</div>':'')+events.map(x=>'<div class="event'+(x.holiday?' h':'')+'">'+esc(x.title)+'</div>').join("");
-return '<aside class="card"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+esc(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||'<p class="muted">مناسبتی ثبت نشده است.</p>')+'<div class="rule"></div><h3>یادداشت‌های شخصی</h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید…"><button type="submit" class="btn primary">ثبت</button></form>'+list.map((x,i)=>'<div class="noteitem"><span>'+esc(x)+'</span><button class="remove" data-act="delete" data-index="'+i+'" aria-label="حذف">×</button></div>').join("")+'<p class="muted">یادداشت‌ها فقط روی این مرورگر ذخیره می‌شوند.</p></aside>';}
+function grid(){
+ const start=toMs(month.y,month.m,1),offset=weekday(start),n=shift(month.y,month.m,1),len=(toMs(n.y,n.m,1)-start)/86400000,total=Math.ceil((offset+len)/7)*7;
+ let html='<div class="week">'+["ش","ی","د","س","چ","پ","ج"].map(x=>'<span>'+x+'</span>').join("")+'</div><div class="days">';
+ for(let i=0;i<total;i++){
+  const ms=start+(i-offset)*86400000,d=jalali(ms),g=gregorian(ms),inside=d.y===month.y&&d.m===month.m,chosen=compare(d,selected)===0,now=compare(d,today())===0,holiday=isHoliday(d,ms),count=(notes[dateKey(d)]||[]).length;
+  html+='<button type="button" data-act="pick" data-ms="'+ms+'" class="day'+(inside?"":" out")+(chosen?" chosen":"")+(now?" now":"")+(holiday?" holiday":"")+'" aria-label="'+formatJ(d)+(count?"، "+fa(count)+" یادداشت":"")+'" aria-pressed="'+chosen+'"><span class="num">'+fa(d.d)+'</span><span class="gr">'+g.d+'</span>'+(count?'<span class="daynote" title="تعداد یادداشت">'+fa(count)+'</span>':'')+'</button>';
+ }
+ return html+'</div><p class="muted calendarhint">روز دلخواه را لمس کن تا جزئیات و یادداشت‌های همان روز را ببینی. عدد کوچک کنار روز، تعداد یادداشت‌هاست.</p>';
+}
+function noteItems(day,items){
+ return items.map((x,i)=>'<div class="noteitem"><span>'+escape(x)+'</span><button type="button" class="remove" data-act="delete" data-key="'+day+'" data-index="'+i+'" aria-label="حذف یادداشت">×</button></div>').join("");
+}
+function details(){
+ const ms=toMs(selected.y,selected.m,selected.d),day=dateKey(selected),list=notes[day]||[],events=eventsOn(selected);
+ const displayed=(weekday(ms)===6?'<div class="event h">جمعه · تعطیلی هفتگی</div>':'')+events.map(x=>'<div class="event'+(x.holiday?' h':'')+'">'+escape(x.title)+'</div>').join("");
+ return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||'<p class="muted">مناسبتی ثبت نشده است.</p>')+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary">ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button></aside>';
+}
 function monthPage(){return '<main class="layout"><section class="card">'+nav(months[month.m-1]+' '+fa(month.y))+grid()+'</section>'+details()+'</main>';}
 function yearPage(){return '<main class="layout"><section class="card">'+nav('سال '+fa(month.y))+'<div class="yeargrid">'+months.map((m,i)=>'<button class="monthbtn" data-act="openmonth" data-m="'+(i+1)+'">'+m+'</button>').join("")+'</div></section>'+details()+'</main>';}
-function convertPage(){return '<main class="card"><h2>تبدیل تاریخ شمسی به میلادی</h2><p class="muted">تاریخ شمسی را وارد کن تا به همان روز در تقویم بروی.</p><form id="convertform" class="converter"><label>سال<input name="y" type="number" min="1200" max="1600" required value="'+selected.y+'"></label><label>ماه<input name="m" type="number" min="1" max="12" required value="'+selected.m+'"></label><label>روز<input name="d" type="number" min="1" max="31" required value="'+selected.d+'"></label><button class="btn primary" type="submit">تبدیل تاریخ</button></form><p class="muted" dir="ltr">'+gdate(toMs(selected.y,selected.m,selected.d))+'</p>'+(error?'<p role="alert">'+esc(error)+'</p>':'')+'</main>';}
-function render(){root.innerHTML=header()+(view==="month"?monthPage():view==="year"?yearPage():convertPage())+'<footer class="foot">پیش‌نمایش ۰.۱ · مناسبت‌ها فعلاً نمونه و ناقص‌اند و هنوز با مرجع رسمی دانشگاه تهران تطبیق نشده‌اند. رویدادهای مذهبی نمایش داده نمی‌شوند.</footer></div>';}
-document.addEventListener("click",e=>{const b=e.target.closest("button[data-act]");if(!b)return;switch(b.dataset.act){
-case "today":selected=today();month={y:selected.y,m:selected.m};view="month";break;
-case "view":view=b.dataset.view;break;
-case "prev":case "next":if(view==="year")month.y+=b.dataset.act==="next"?1:-1;else month=shift(month.y,month.m,b.dataset.act==="next"?1:-1);break;
-case "pick":selected=jalali(+b.dataset.ms);month={y:selected.y,m:selected.m};break;
-case "openmonth":month.m=+b.dataset.m;selected={y:month.y,m:month.m,d:1};view="month";break;
-case "delete":{const k=dateKey(selected),items=notes[k]||[];items.splice(+b.dataset.index,1);if(!items.length)delete notes[k];save();break;}
-default:return;}render();});
-document.addEventListener("submit",e=>{if(e.target.id==="noteform"){e.preventDefault();const v=e.target.querySelector("input").value.trim();if(v){const k=dateKey(selected);notes[k]=notes[k]||[];notes[k].push(v.slice(0,140));save();render();}}
-if(e.target.id==="convertform"){e.preventDefault();const f=new FormData(e.target),y=+f.get("y"),m=+f.get("m"),d=+f.get("d");try{toMs(y,m,d);selected={y,m,d};month={y,m};view="month";error="";}catch{error="تاریخ نامعتبر است.";}render();}});
+function dateInputs(d){
+ return '<div class="converter"><label>سال<input name="y" type="number" inputmode="numeric" min="1200" max="2300" required value="'+d.y+'"></label><label>ماه<input name="m" type="number" inputmode="numeric" min="1" max="12" required value="'+d.m+'"></label><label>روز<input name="d" type="number" inputmode="numeric" min="1" max="31" required value="'+d.d+'"></label><button class="btn primary" type="submit">تبدیل تاریخ</button></div>';
+}
+function convertPage(){
+ const isJ=converterMode==="j2g",g=gregorian(toMs(selected.y,selected.m,selected.d)),defaultDate=isJ?selected:g;
+ return '<main class="card"><h2>تبدیل تاریخ دوطرفه</h2><div class="convertmodes"><button type="button" class="btn'+(isJ?' primary':'')+'" data-act="direction" data-dir="j2g">شمسی ← میلادی</button><button type="button" class="btn'+(!isJ?' primary':'')+'" data-act="direction" data-dir="g2j">میلادی ← شمسی</button></div><p class="muted">تاریخ '+(isJ?'شمسی':'میلادی')+' را وارد کن تا معادل '+(isJ?'میلادی':'شمسی')+' آن نمایش داده شود.</p><form id="convertform">'+dateInputs(defaultDate)+'</form>'+(conversion?'<div class="result" role="status"><span class="muted">نتیجه تبدیل</span><strong>'+escape(conversion.label)+'</strong><button class="btn" type="button" data-act="jump">نمایش این روز در تقویم</button></div>':'')+(convertError?'<p class="error" role="alert">'+escape(convertError)+'</p>':'')+'</main>';
+}
+function notesPage(){
+ const count=noteCount(notes),days=sortedDays(notes);
+ return '<main class="card"><div class="head"><h2>همه یادداشت‌های من</h2><span class="countpill">'+fa(count)+' یادداشت</span></div><p class="muted">یادداشت‌ها به روز مربوط وصل‌اند. با لمس تاریخ، همان روز در تقویم باز می‌شود. اطلاعات فقط روی همین مرورگر ذخیره می‌شوند.</p><div class="backuptools"><button class="btn" type="button" data-act="export" '+(count?'':'disabled')+'>دریافت پشتیبان JSON</button><button class="btn" type="button" data-act="import">بازیابی از JSON</button><input type="file" id="backupfile" accept=".json,application/json" hidden aria-label="انتخاب فایل پشتیبان JSON"></div>'+(!count?'<div class="empty">هنوز یادداشتی ثبت نشده است. از نمای ماه، یک روز را انتخاب کن و یادداشت بنویس.</div>':'<div class="notehistory">'+days.map(day=>{const bits=day.split("-").map(Number),j={y:bits[0],m:bits[1],d:bits[2]};return '<section class="historyday"><div class="historyhead"><button type="button" class="btn" data-act="open-noted-day" data-key="'+day+'">'+formatJ(j)+' · مشاهده در تقویم</button><span class="muted">'+fa(notes[day].length)+' یادداشت</span></div>'+noteItems(day,notes[day])+'</section>';}).join("")+'</div>')+'<p class="muted">بازیابی با یادداشت‌های موجود ادغام می‌شود و نسخه تکراری یک متن را دوباره وارد نمی‌کند. برای انتقال به دستگاه دیگر، فایل JSON را خودت منتقل کن.</p></main>';
+}
+function render(){
+ root.innerHTML=header()+(feedback?'<div class="message" role="status">'+escape(feedback)+'</div>':'')+(view==="month"?monthPage():view==="year"?yearPage():view==="convert"?convertPage():notesPage())+'<footer class="foot">پیش‌نمایش ۰.۲ · فهرست مناسبت‌ها هنوز نمونه و ناقص است و با مرجع رسمی دانشگاه تهران تطبیق نشده. مناسبت‌های مذهبی نمایش داده نمی‌شوند.</footer></div>';
+}
+function showDay(){render();if(window.matchMedia&&matchMedia("(max-width:760px)").matches)requestAnimationFrame(()=>document.getElementById("details")?.scrollIntoView({behavior:"smooth",block:"start"}));}
+function changeMonth(step){
+ if(view==="year"){month.y+=step;return;}
+ month=shift(month.y,month.m,step);
+ const next=shift(month.y,month.m,1);
+ const max=(toMs(next.y,next.m,1)-toMs(month.y,month.m,1))/86400000;
+ selected={y:month.y,m:month.m,d:Math.min(selected.d,max)};
+}
+document.addEventListener("click",e=>{
+ const b=e.target.closest("button[data-act]");if(!b)return;
+ const act=b.dataset.act;
+ if(act!=="delete")feedback="";
+ switch(act){
+ case "today":selected=today();month={y:selected.y,m:selected.m};view="month";break;
+ case "view":view=b.dataset.view;conversion=null;convertError="";break;
+ case "viewnotes":view="notes";break;
+ case "direction":converterMode=b.dataset.dir;conversion=null;convertError="";break;
+ case "prev":changeMonth(-1);break;
+ case "next":changeMonth(1);break;
+ case "pick":selected=jalali(Number(b.dataset.ms));month={y:selected.y,m:selected.m};showDay();return;
+ case "openmonth":month.m=Number(b.dataset.m);selected={y:month.y,m:month.m,d:1};view="month";break;
+ case "open-noted-day":{const d=b.dataset.key.split("-").map(Number);selected={y:d[0],m:d[1],d:d[2]};month={y:selected.y,m:selected.m};view="month";showDay();return;}
+ case "delete":{const k=b.dataset.key,items=notes[k]||[];items.splice(Number(b.dataset.index),1);if(!items.length)delete notes[k];if(save())feedback="یادداشت حذف شد.";break;}
+ case "jump":if(conversion){selected=jalali(conversion.ms);month={y:selected.y,m:selected.m};view="month";showDay();return;}break;
+ case "export":{const blob=new Blob([exportNotes(notes)],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="karen-rooznama-notes.json";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);feedback="فایل پشتیبان برای دریافت آماده شد.";break;}
+ case "import":document.getElementById("backupfile")?.click();return;
+ default:return;
+ }
+ render();
+});
+document.addEventListener("submit",e=>{
+ if(e.target.id==="noteform"){
+  e.preventDefault();const value=e.target.querySelector("input").value.trim();if(!value)return;
+  const k=dateKey(selected);notes[k]=notes[k]||[];notes[k].push(value.slice(0,140));if(save())feedback="یادداشت برای "+formatJ(selected)+" ثبت شد.";render();
+ }
+ if(e.target.id==="convertform"){
+  e.preventDefault();const data=new FormData(e.target),y=Number(data.get("y")),m=Number(data.get("m")),d=Number(data.get("d"));
+  try{
+   let ms;
+   if(converterMode==="j2g")ms=toMs(y,m,d);
+   else{
+    if(![y,m,d].every(Number.isInteger)||y<1800||y>2200||m<1||m>12||d<1||d>31)throw Error("invalid");
+    ms=Date.UTC(y,m-1,d);
+    const back=gregorian(ms);if(back.y!==y||back.m!==m||back.d!==d)throw Error("invalid");
+   }
+   conversion={ms,label:converterMode==="j2g"?gdate(ms):formatJ(jalali(ms))};
+   convertError="";
+  }catch{conversion=null;convertError="تاریخ واردشده معتبر نیست. سال، ماه و روز را بررسی کن.";}
+  render();
+ }
+});
+document.addEventListener("change",async e=>{
+ if(e.target.id!=="backupfile")return;
+ const file=e.target.files?.[0];if(!file)return;
+ try{
+  if(file.size>2_000_000)throw Error("حجم فایل پشتیبان بیش از حد مجاز است.");
+  const result=importNotes(await file.text(),notes);notes=result.notes;
+  if(save())feedback=fa(result.added)+" یادداشت جدید از فایل JSON بازیابی شد.";
+ }catch(err){feedback="بازیابی انجام نشد: "+(err?.message||"فایل نامعتبر است.");}
+ render();
+});
+render();
+setInterval(()=>{const c=document.querySelector(".clock");if(c)c.textContent=tehran().time;},30000);
 if("serviceWorker" in navigator&&location.protocol==="https:")addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
-render();setInterval(()=>{const c=document.querySelector(".clock");if(c)c.textContent=tehran().time;},30000);
