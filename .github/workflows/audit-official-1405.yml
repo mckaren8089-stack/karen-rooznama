@@ -1,0 +1,31 @@
+name: Audit complete 1405 official-source calendar
+on:
+  push:
+    paths:
+      - 'data/years/1405.json'
+      - 'data/curation/1405-*.tsv'
+      - 'scripts/audit-official-1405.py'
+      - '.github/workflows/audit-official-1405.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned PDF parser
+        run: python -m pip install pymupdf==1.26.7
+      - name: Download exact official 1405 PDF
+        run: curl -fLsS --retry 2 --max-time 45 'https://calendar.ut.ac.ir/documents/2139738/7092644/Calendar-1405.pdf' -o Calendar-1405.pdf
+      - name: Verify SHA-256, 365 day cells, curated records and holiday rules
+        run: python scripts/audit-official-1405.py Calendar-1405.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: official-1405-audit-report
+          path: audit-1405.json
+          retention-days: 30
