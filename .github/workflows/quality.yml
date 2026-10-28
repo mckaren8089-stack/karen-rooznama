@@ -16,5 +16,8 @@ jobs:
           node-version: '22'
       - run: node --check app.js
       - run: node --check core.mjs
+      - run: node --check events.mjs
+      - run: node --check notes.mjs
+      - run: node --check scripts/check-official-source.mjs
       - run: node --check sw.js
       - run: node --test tests/*.test.mjs
