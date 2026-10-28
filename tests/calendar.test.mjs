@@ -1,0 +1,9 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {jalali,toMs,gregorian,weekday,eventsOn,filterEvents} from "../core.mjs";
+test("Nowruz 1405",()=>assert.deepEqual(jalali(Date.UTC(2026,2,21)),{y:1405,m:1,d:1}));
+test("Reverse conversion",()=>assert.deepEqual(gregorian(toMs(1405,1,1)),{y:2026,m:3,d:21}));
+test("Round-trip 2024 to 2030",()=>{for(let y=2024;y<=2030;y++)for(let m=1;m<=12;m++)for(let d=1;d<=new Date(Date.UTC(y,m,0)).getUTCDate();d++){const ms=Date.UTC(y,m-1,d),j=jalali(ms);assert.equal(toMs(j.y,j.m,j.d),ms);}});
+test("Friday index",()=>assert.equal(weekday(Date.UTC(2026,10,6)),6));
+test("Religious events excluded",()=>assert.deepEqual(filterEvents([{category:"religious",title:"A"},{category:"nonreligious",title:"B"}]).map(x=>x.title),["B"]));
+test("Nature day",()=>assert.ok(eventsOn({y:1405,m:1,d:13}).some(x=>x.title==="روز طبیعت")));
