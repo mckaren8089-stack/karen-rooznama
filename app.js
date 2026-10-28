@@ -17,7 +17,7 @@ function save(){
 function header(){
  const now=tehran();
  const tabs=[["month","ماه"],["year","سال"],["convert","تبدیل تاریخ"],["notes","یادداشت‌ها"]];
- return '<div class="wrap"><header class="top"><div class="brand"><span class="logo" aria-hidden="true">☀</span><div><h1>روزنمای کارن</h1><div class="muted">تقویم شمسی و میلادی · ساعت ایران</div></div></div><div><span class="clock">'+now.time+'</span> <button data-act="today" class="btn primary">امروز</button></div></header><nav class="tabs" aria-label="ابزارهای روزنما">'+tabs.map(([id,label])=>'<button type="button" data-act="view" data-view="'+id+'" class="'+(view===id?"active":"")+'" aria-current="'+(view===id?"page":"false")+'">'+label+(id==="notes"&&noteCount(notes)?' <span class="tabcount">'+fa(noteCount(notes))+'</span>':'')+'</button>').join("")+'</nav>';
+ return '<div class="wrap"><header class="top"><div class="brand"><span class="logo" aria-hidden="true">ر</span><div><h1>روزنمای کارن</h1><div class="muted">تقویم شمسی و میلادی · ساعت ایران</div></div></div><div><span class="clock">'+now.time+'</span> <button data-act="today" class="btn primary">امروز</button></div></header><nav class="tabs" aria-label="ابزارهای روزنما">'+tabs.map(([id,label])=>'<button type="button" data-act="view" data-view="'+id+'" class="'+(view===id?"active":"")+'" aria-current="'+(view===id?"page":"false")+'">'+label+(id==="notes"&&noteCount(notes)?' <span class="tabcount">'+fa(noteCount(notes))+'</span>':'')+'</button>').join("")+'</nav>';
 }
 function nav(title){return '<div class="head"><div class="arrows"><button class="btn" data-act="prev" aria-label="قبلی">❯</button><button class="btn" data-act="next" aria-label="بعدی">❮</button></div><h2>'+title+'</h2></div>';}
 function grid(){
