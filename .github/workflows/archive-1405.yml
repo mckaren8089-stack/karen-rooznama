@@ -1,0 +1,18 @@
+name: Archive reviewed 1405 source data
+on:
+  push:
+    paths:
+      - '.github/workflows/archive-1405.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rooznama-1405-curated-json
+          path: data/years/1405.json
+          retention-days: 2
