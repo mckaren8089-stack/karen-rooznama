@@ -23,6 +23,9 @@ https://mckaren8089-stack.github.io/karen-rooznama/
 `node --check app.js` و `node --test tests/*.test.mjs`.
 Workflow های GitHub Actions در `.github/workflows` قرار دارند.
 
+## انتشار و دامنه
+برای روش انتشار رایگان، توضیح گزینه‌های GitHub Pages و دامنه سفارشی به [Snapshot 0.1](docs/SNAPSHOT-0.1.md) مراجعه کنید. فعلاً هیچ دامنه‌ای نمی‌خریم.
+
 ## حقوق و مجوز
 هنوز **LICENSE انتخاب نشده است**. مشاهده [تصمیم باز لایسنس](docs/LICENSING.md) و [تصمیم‌های فنی محصول](docs/DECISIONS.md).
 یادآوری: لایسنس Karen Fuse نیز باید جداگانه تعیین شود.
