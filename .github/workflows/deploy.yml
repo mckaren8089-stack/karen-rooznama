@@ -18,6 +18,20 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate Android PWA icons
+        run: |
+          python -m pip install --disable-pip-version-check 'cairosvg==2.8.2' 'pillow==11.3.0'
+          python scripts/build-pwa-icons.py
+          python - <<'PY'
+          from PIL import Image
+          for size in (192,512):
+              image=Image.open(f"icons/faravahar-{size}.png")
+              assert image.format=="PNG" and image.size==(size,size)
+          assert Image.open("icons/faravahar-maskable-512.png").size==(512,512)
+          PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
