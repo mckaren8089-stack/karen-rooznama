@@ -14,6 +14,7 @@ export function validateYearFile(year,file){
  for(const e of file.events){if(!validEvent(e)||!allowed.includes(e.category))throw Error("Invalid event record");}
  return filterReligious(file.events).map(e=>({y:year,m:e.month,d:e.day,title:e.title,holiday:e.holiday,category:e.category,source:file.source.url}));
 }
+export function installYearSnapshot(year,json){cache.set(year,validateYearFile(year,json));}
 export async function loadYear(year){
  if(cache.has(year))return true;
  if(!SUPPORTED_YEARS.has(year)){cache.set(year,[]);return true;}
