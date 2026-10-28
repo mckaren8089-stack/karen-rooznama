@@ -34,3 +34,5 @@ test("Corrupt or unrelated backups are rejected",()=>{
  assert.throws(()=>importNotes(JSON.stringify({app:"unrelated",notes:{"1405-8-7":["x"]}}),{}));
  assert.throws(()=>importNotes(JSON.stringify({notes:{"random":["x"]}}),{}));
 });
+
+test("Backup restore preserves two identical notes on the same date without duplication on re-import",()=>{const input={"1405-8-7":["تکراری","تکراری"]};const once=importNotes(exportNotes(input),{});assert.equal(once.notes["1405-8-7"].length,2);const twice=importNotes(exportNotes(input),once.notes);assert.equal(twice.notes["1405-8-7"].length,2);assert.equal(twice.added,0);});
