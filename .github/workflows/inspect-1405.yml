@@ -1,0 +1,19 @@
+name: Inspect official 1405 calendar PDF text layout
+on:
+  push:
+    paths:
+      - 'scripts/inspect-calendar-1405.mjs'
+      - '.github/workflows/inspect-1405.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect layout with pdftotext
+        run: node scripts/inspect-calendar-1405.mjs
