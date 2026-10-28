@@ -1,1 +1,44 @@
 :root{color-scheme:dark;--bg:#171614;--surface:#26241f;--surface2:#343027;--fg:#f9f3e9;--muted:#c0ac99;--accent:#df7155;--line:#514637}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#393027,transparent 40%),var(--bg);color:var(--fg);font-family:Tahoma,"Segoe UI",sans-serif}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #fbc57c;outline-offset:2px}.wrap{max-width:1120px;margin:auto;padding:16px 12px 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:5px 0 16px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:12px}.logo{font-size:26px;background:var(--accent);border-radius:15px;padding:10px}h1{font-size:1.4rem;margin:0}h2{font-size:1.15rem;margin:0}.muted{color:var(--muted);font-size:.82rem;line-height:1.8}.btn{color:var(--fg);background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:10px 13px;min-height:44px}.primary{background:var(--accent);border-color:var(--accent);color:white;font-weight:bold}.tabs{display:flex;background:var(--surface);padding:5px;gap:5px;border-radius:14px;margin:18px 0}.tabs button{flex:1;border:0;border-radius:10px;padding:12px 3px;background:none;color:var(--muted)}.tabs button.active{background:var(--fg);color:var(--bg);font-weight:700}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:15px;align-items:start}.card{background:var(--surface);border:1px solid #ffffff12;border-radius:19px;padding:16px;min-width:0}.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}.arrows{display:flex;gap:6px}.week,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.week span{text-align:center;font-size:.8rem;color:var(--muted);padding:8px 0}.week span:last-child{color:#ff9c8d}.day{background:#ffffff05;color:var(--fg);border:1px solid transparent;min-width:0;min-height:72px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px}.day.out{opacity:.35}.day.now{border-color:#f5bb70}.day.chosen{background:var(--accent)}.day.holiday:not(.chosen) .num{color:#ff9b7f}.day .num{font-size:1.13rem;font-weight:bold}.day .gr{color:var(--muted);font-size:.69rem;direction:ltr}.day.chosen .gr{color:white}.datebig{font-size:4.5rem;font-weight:900}.rule{height:1px;background:var(--line);margin:15px 0}.event{background:#ffffff09;border-radius:9px;padding:11px;font-size:.86rem;margin-top:7px}.event.h{border-right:3px solid var(--accent)}h3{font-size:1rem;margin:0}.noteform{display:flex;gap:7px;margin-top:12px}.noteform input,.converter input{background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:11px;min-width:0;width:100%}.noteform input{flex:1}.noteitem{display:flex;align-items:center;gap:7px;background:#ffffff08;border-radius:9px;margin-top:7px;padding:6px}.noteitem span{flex:1;overflow-wrap:anywhere}.remove{background:none;border:0;color:#ffa78e;min-width:44px;min-height:44px}.yeargrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.monthbtn{border:1px solid var(--line);background:var(--surface2);color:var(--fg);padding:16px;border-radius:12px;text-align:right;min-height:85px}.converter{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.converter label{font-size:.8rem;color:var(--muted)}.converter .btn{grid-column:1/-1}.foot{padding:20px 4px;font-size:.78rem;color:var(--muted);line-height:1.9}@media(max-width:760px){.layout{grid-template-columns:1fr}.card{padding:12px}.day{min-height:67px}}@media(max-width:370px){.day{min-height:60px}.day .num{font-size:1rem}.days,.week{gap:2px}.clock{display:none}.yeargrid{grid-template-columns:repeat(2,1fr)}}
+
+/* Version 0.2: date converter and discoverable notes */
+.tabs button{font-size:.86rem;line-height:1.6;white-space:normal}
+.tabcount,.countpill{display:inline-block;vertical-align:middle;border:1px solid var(--line);border-radius:999px;padding:1px 7px;background:var(--surface2);color:var(--fg);font-size:.73rem;white-space:nowrap}
+.day{position:relative}
+.daynote{position:absolute;bottom:3px;right:5px;min-width:16px;height:16px;line-height:16px;border-radius:6px;background:#e5b56c;color:#161614;font-size:.7rem;font-weight:bold;text-align:center}
+.day.chosen .daynote{background:white}
+.calendarhint{margin:13px 0 0}
+.details{scroll-margin-top:16px}
+.datebig{font-size:3.25rem}
+.allnotes{margin-top:12px;width:100%}
+.noteitem span{font-size:.9rem;line-height:1.7}
+.yeargrid .monthbtn{min-height:73px}
+.convertmodes{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:19px 0}
+.convertmodes button{white-space:normal}
+.converter{margin-top:14px}
+.converter label{display:flex;flex-direction:column;gap:7px}
+.converter input{margin-top:2px;direction:ltr;text-align:center;min-height:44px}
+.converter .btn{margin-top:6px}
+.result{display:grid;gap:12px;padding:15px;margin-top:17px;background:var(--surface2);border:1px solid var(--line);border-radius:12px}
+.result strong{font-size:1.2rem}
+.result button{justify-self:start}
+.error{color:#ffb2a0}
+.message{padding:12px 14px;margin:12px 0;background:#30372b;border-right:3px solid #badd89;border-radius:10px;line-height:1.8}
+.backuptools{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:16px 0}
+.backuptools button{flex:1}
+.backuptools button:disabled{opacity:.5;cursor:not-allowed}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:28px 15px;text-align:center;color:var(--muted);line-height:1.9}
+.notehistory{display:grid;gap:13px}
+.historyday{padding:13px;background:var(--surface2);border-radius:13px;border:1px solid var(--line)}
+.historyhead{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.historyhead .btn{background:var(--surface);text-align:right}
+@media(max-width:760px){
+ .tabs{gap:3px}.tabs button{font-size:.76rem;padding:10px 1px}
+ .tabcount{padding:0 4px;font-size:.67rem}
+ .daynote{right:2px;bottom:2px}
+ .backuptools{flex-direction:column;align-items:stretch}
+ .backuptools button{width:100%}
+}
+@media(max-width:370px){
+ .tabs button{font-size:.69rem}
+ .daynote{min-width:14px;height:14px;line-height:14px;font-size:.65rem}
+}
