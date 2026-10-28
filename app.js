@@ -39,11 +39,11 @@ function details(){
 function monthPage(){return '<main class="layout"><section class="card">'+nav(months[month.m-1]+' '+fa(month.y))+grid()+'</section>'+details()+'</main>';}
 function yearPage(){return '<main class="layout"><section class="card">'+nav('سال '+fa(month.y))+'<div class="yeargrid">'+months.map((m,i)=>'<button class="monthbtn" data-act="openmonth" data-m="'+(i+1)+'">'+m+'</button>').join("")+'</div></section>'+details()+'</main>';}
 function dateInputs(d){
- return '<div class="converter"><label>سال<input name="y" type="number" inputmode="numeric" min="1200" max="2300" required value="'+d.y+'"></label><label>ماه<input name="m" type="number" inputmode="numeric" min="1" max="12" required value="'+d.m+'"></label><label>روز<input name="d" type="number" inputmode="numeric" min="1" max="31" required value="'+d.d+'"></label><button class="btn primary" type="submit">تبدیل تاریخ</button></div>';
+ return '<div class="converter"><label>سال<input name="y" type="number" inputmode="numeric" min="'+(converterMode==="j2g"?"1200":"1822")+'" max="'+(converterMode==="j2g"?"1600":"2200")+'" required value="'+d.y+'"></label><label>ماه<input name="m" type="number" inputmode="numeric" min="1" max="12" required value="'+d.m+'"></label><label>روز<input name="d" type="number" inputmode="numeric" min="1" max="31" required value="'+d.d+'"></label><button class="btn primary" type="submit">تبدیل تاریخ</button></div>';
 }
 function convertPage(){
  const isJ=converterMode==="j2g",g=gregorian(toMs(selected.y,selected.m,selected.d)),defaultDate=isJ?selected:g;
- return '<main class="card"><h2>تبدیل تاریخ دوطرفه</h2><div class="convertmodes"><button type="button" class="btn'+(isJ?' primary':'')+'" data-act="direction" data-dir="j2g">شمسی ← میلادی</button><button type="button" class="btn'+(!isJ?' primary':'')+'" data-act="direction" data-dir="g2j">میلادی ← شمسی</button></div><p class="muted">تاریخ '+(isJ?'شمسی':'میلادی')+' را وارد کن تا معادل '+(isJ?'میلادی':'شمسی')+' آن نمایش داده شود.</p><form id="convertform">'+dateInputs(defaultDate)+'</form>'+(conversion?'<div class="result" role="status"><span class="muted">نتیجه تبدیل</span><strong>'+escape(conversion.label)+'</strong><button class="btn" type="button" data-act="jump">نمایش این روز در تقویم</button></div>':'')+(convertError?'<p class="error" role="alert">'+escape(convertError)+'</p>':'')+'</main>';
+ return '<main class="card"><h2>تبدیل تاریخ دوطرفه</h2><div class="convertmodes"><button type="button" class="btn'+(isJ?' primary':'')+'" data-act="direction" data-dir="j2g">شمسی به میلادی</button><button type="button" class="btn'+(!isJ?' primary':'')+'" data-act="direction" data-dir="g2j">میلادی به شمسی</button></div><p class="muted">تاریخ '+(isJ?'شمسی':'میلادی')+' را وارد کن تا معادل '+(isJ?'میلادی':'شمسی')+' آن نمایش داده شود.</p><form id="convertform">'+dateInputs(defaultDate)+'</form>'+(conversion?'<div class="result" role="status"><span class="muted">نتیجه تبدیل</span><strong>'+escape(conversion.label)+'</strong><button class="btn" type="button" data-act="jump">نمایش این روز در تقویم</button></div>':'')+(convertError?'<p class="error" role="alert">'+escape(convertError)+'</p>':'')+'</main>';
 }
 function notesPage(){
  const count=noteCount(notes),days=sortedDays(notes);
@@ -93,7 +93,7 @@ document.addEventListener("submit",e=>{
    let ms;
    if(converterMode==="j2g")ms=toMs(y,m,d);
    else{
-    if(![y,m,d].every(Number.isInteger)||y<1800||y>2200||m<1||m>12||d<1||d>31)throw Error("invalid");
+    if(![y,m,d].every(Number.isInteger)||y<1822||y>2200||m<1||m>12||d<1||d>31)throw Error("invalid");
     ms=Date.UTC(y,m-1,d);
     const back=gregorian(ms);if(back.y!==y||back.m!==m||back.d!==d)throw Error("invalid");
    }
