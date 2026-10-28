@@ -59,3 +59,8 @@
 .event.h{border-right:3px solid #e5b973}
 @media(max-width:400px){.noteedit{grid-template-columns:1fr 1fr}.noteedit input{grid-column:1/-1}.noteedit .btn{min-width:0}}
 @media(prefers-reduced-motion:reduce){.btn{transition:none}}
+
+/* Temporary Persian Faravahar emblem; safe to swap without redesigning UI. */
+.logo{padding:0;width:65px;height:65px;min-width:65px;background:transparent;box-shadow:none;border-radius:15px;overflow:hidden}
+.logo img{width:100%;height:100%;object-fit:contain;display:block}
+@media(max-width:370px){.logo{width:56px;height:56px;min-width:56px}}
