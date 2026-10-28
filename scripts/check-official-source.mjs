@@ -9,7 +9,10 @@ try {
  const payload=new Uint8Array(await response.arrayBuffer());
  if(payload.byteLength>15000000)throw Error("PDF too large");
  if(new TextDecoder().decode(payload.slice(0,5))!=="%PDF-")throw Error("Response is not PDF");
- result={source:url,status:"reachable",bytes:payload.byteLength,sha256:createHash("sha256").update(payload).digest("hex"),year:doc.year,importStatus:doc.status};
+ const digest=createHash("sha256").update(payload).digest("hex");
+ const unchanged=digest===doc.source.sha256;
+ result={source:url,status:unchanged?"verified":"changed",bytes:payload.byteLength,sha256:digest,expectedSha256:doc.source.sha256,year:doc.year,importStatus:doc.status};
+ if(!unchanged)process.exitCode=2;
  console.log(JSON.stringify(result,null,2));
 }catch(e){
  result={source:url,status:"unreachable",reason:String(e.message||e),year:doc.year,importStatus:doc.status};
@@ -17,7 +20,7 @@ try {
  process.exitCode=1;
 }
 if(process.env.GITHUB_STEP_SUMMARY){
- const status=result.status==="reachable"?"در دسترس":"عدم دسترسی";
+ const status=result.status==="verified"?"دریافت شد؛ اثرانگشت مطابق نسخه بازبینی‌شده":result.status==="changed"?"فایل دانشگاه تغییر کرده؛ بازبینی لازم است":"عدم دسترسی";
  appendFileSync(process.env.GITHUB_STEP_SUMMARY,[
   "## پایش سند رسمی تقویم",
   "- سال: "+doc.year,
