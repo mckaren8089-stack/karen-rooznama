@@ -1,0 +1,19 @@
+name: Check official calendar source
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 9 10 * *'
+permissions:
+  contents: read
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe Tehran University calendar PDF (no unreviewed imports)
+        run: node scripts/check-official-source.mjs
+        continue-on-error: true
