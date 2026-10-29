@@ -1,8 +1,8 @@
 /* Karen Rooznama offline shell. Never return HTML for missing JS/CSS/image requests. */
-const VERSION="karen-rooznama-v0.3.2";
+const VERSION="karen-rooznama-v0.4.0";
 const OFFLINE=[
  "./","./index.html","./app.js","./style.css","./core.mjs","./events.mjs",
- "./notes.mjs","./data/years/1405.json","./assets/faravahar.svg",
+ "./notes.mjs","./notes-store.mjs","./data/years/1405.json","./assets/faravahar.svg",
  "./icons/faravahar-192.png","./icons/faravahar-512.png",
  "./icons/faravahar-maskable-512.png","./manifest.webmanifest"
 ];
