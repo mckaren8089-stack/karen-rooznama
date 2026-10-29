@@ -1,11 +1,17 @@
-# روزنمای کارن
+# روزنمای کارن | Karen Rooznama
 
-**اجرای آنلاین برنامه:** https://mckaren8089-stack.github.io/karen-rooznama/
+**اجرای مستقیم / Launch:** https://mckaren8089-stack.github.io/karen-rooznama/
 
 **زبان / Language:** [فارسی](README.fa.md) | [English](README.en.md)
 
-**English summary:** A minimalist Iranian calendar and local personal planner.
+تقویم ایرانی ساده و دفتر برنامه‌ریزی شخصی با تبدیل تاریخ، مناسبت‌های غیرمذهبی و یادداشت‌های روزانه.
 
-**جزئیات / Full details:** [فارسی](README.fa.md) | [English](README.en.md)
+A minimalist Iranian calendar and personal planner with date conversion, nonreligious occasions, and daily notes.
 
-**حقوق / Rights:** [All rights reserved / تمامی حقوق محفوظ است](LICENSE).
+**امکانات فعلی:** تقویم شمسی و میلادی · یادداشت روزانه · پشتیبان JSON · PWA
+
+**در برنامه:** پایداری یادداشت‌ها، سال‌های رسمی بیشتر، کارهای روزانه و جست‌وجو
+
+**جزئیات:** [معرفی فارسی](README.fa.md) | [English overview](README.en.md)
+
+**حقوق کد:** [تمامی حقوق محفوظ است](LICENSE).
