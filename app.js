@@ -1,6 +1,6 @@
 import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear} from "./core.mjs";
 import {normalizeNotes,noteCount,sortedDays,exportNotes,importNotes} from "./notes.mjs";
-import {NOTES_KEY,readNotes,commitNotes,restorePrevious,savedRawForRescue} from "./notes-store.mjs";
+import {NOTES_KEY,readNotes,commitNotes,restorePrevious,recoverFromExternalFile,savedRawForRescue} from "./notes-store.mjs";
 const root=document.getElementById("app");
 const today=()=>tehran().day;
 let selected=today(),month={y:selected.y,m:selected.m},view="month";
@@ -99,7 +99,7 @@ function convertPage(){
 }
 function notesPage(){
  const count=noteCount(notes),days=sortedDays(notes);
- return '<main class="card"><div class="head"><h2>همه یادداشت‌های من</h2><span class="countpill">'+fa(count)+' یادداشت</span></div><p class="muted">یادداشت‌ها به روز مربوط وصل‌اند. با لمس تاریخ، همان روز در تقویم باز می‌شود. اطلاعات فقط روی همین مرورگر ذخیره می‌شوند.</p><div class="backuptools"><button class="btn" type="button" data-act="export" '+(count?'':'disabled')+'>دریافت پشتیبان JSON</button><button class="btn" type="button" data-act="import" '+(noteState.fault?'disabled':'')+'>بازیابی از JSON</button>'+(noteState.previousAvailable?'<button class="btn" type="button" data-act="restore-previous">بازیابی نسخه ذخیره‌شده قبلی</button>':'')+'<input type="file" id="backupfile" accept=".json,application/json" hidden aria-label="انتخاب فایل پشتیبان JSON"></div>'+(!count?'<div class="empty">هنوز یادداشتی ثبت نشده است. از نمای ماه، یک روز را انتخاب کن و یادداشت بنویس.</div>':'<div class="notehistory">'+days.map(day=>{const bits=day.split("-").map(Number),j={y:bits[0],m:bits[1],d:bits[2]};return '<section class="historyday"><div class="historyhead"><button type="button" class="btn" data-act="open-noted-day" data-key="'+day+'">'+formatJ(j)+' · مشاهده در تقویم</button><span class="muted">'+fa(notes[day].length)+' یادداشت</span></div>'+noteItems(day,notes[day])+'</section>';}).join("")+'</div>')+'<p class="muted">بازیابی با یادداشت‌های موجود ادغام می‌شود و نسخه تکراری یک متن را دوباره وارد نمی‌کند. برای انتقال به دستگاه دیگر، فایل JSON را خودت منتقل کن.</p></main>';
+ return '<main class="card"><div class="head"><h2>همه یادداشت‌های من</h2><span class="countpill">'+fa(count)+' یادداشت</span></div><p class="muted">یادداشت‌ها به روز مربوط وصل‌اند. با لمس تاریخ، همان روز در تقویم باز می‌شود. اطلاعات فقط روی همین مرورگر ذخیره می‌شوند.</p><div class="backuptools"><button class="btn" type="button" data-act="export" '+(count?'':'disabled')+'>دریافت پشتیبان JSON</button><button class="btn" type="button" data-act="import">بازیابی از JSON</button>'+(noteState.previousAvailable?'<button class="btn" type="button" data-act="restore-previous">بازیابی نسخه ذخیره‌شده قبلی</button>':'')+'<input type="file" id="backupfile" accept=".json,application/json" hidden aria-label="انتخاب فایل پشتیبان JSON"></div>'+(!count?'<div class="empty">'+(noteState.fault?'یادداشت‌ها قابل خواندن نیستند؛ لطفاً از ابزار بازیابی بالا استفاده کن.':'هنوز یادداشتی ثبت نشده است. از نمای ماه، یک روز را انتخاب کن و یادداشت بنویس.')+'</div>':'<div class="notehistory">'+days.map(day=>{const bits=day.split("-").map(Number),j={y:bits[0],m:bits[1],d:bits[2]};return '<section class="historyday"><div class="historyhead"><button type="button" class="btn" data-act="open-noted-day" data-key="'+day+'">'+formatJ(j)+' · مشاهده در تقویم</button><span class="muted">'+fa(notes[day].length)+' یادداشت</span></div>'+noteItems(day,notes[day])+'</section>';}).join("")+'</div>')+'<p class="muted">بازیابی با یادداشت‌های موجود ادغام می‌شود و نسخه تکراری یک متن را دوباره وارد نمی‌کند. برای انتقال به دستگاه دیگر، فایل JSON را خودت منتقل کن.</p></main>';
 }
 function render(){
  const years=[month.y,selected.y];
@@ -186,7 +186,17 @@ document.addEventListener("change",async e=>{
  const file=e.target.files?.[0];if(!file)return;
  try{
   if(file.size>2_000_000)throw Error("حجم فایل پشتیبان بیش از حد مجاز است.");
-  const text=await file.text();let added=0;
+  const text=await file.text();
+  if(noteState.fault){
+   if(!confirm("این بازیابی اضطراری، داده محلی خراب را با یادداشت‌های فایل JSON جایگزین می‌کند. پیش از ادامه داده خام را دریافت کرده‌ای؟"))return;
+   const run=()=>recoverFromExternalFile(window.localStorage,noteState,text);
+   const restored=navigator.locks&&typeof navigator.locks.request==="function"
+     ?await navigator.locks.request(NOTES_KEY,{mode:"exclusive"},run):run();
+   noteState=restored;notes=restored.notes;
+   feedback="یادداشت‌های فایل بازیابی شدند؛ اکنون یک پشتیبان JSON تازه بگیر.";render();
+   return;
+  }
+  let added=0;
   await changeNotes(draft=>{const result=importNotes(text,draft);added=result.added;for(const k of Object.keys(draft))delete draft[k];Object.assign(draft,result.notes);return true;},()=>fa(added)+" یادداشت جدید از فایل JSON بازیابی شد.");
   e.target.value="";return;
  }catch(err){feedback="بازیابی انجام نشد: "+(err?.message||"فایل نامعتبر است.");}
