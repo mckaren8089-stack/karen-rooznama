@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {NOTES_KEY,PREVIOUS_KEY,readNotes,commitNotes,restorePrevious,savedRawForRescue} from "../notes-store.mjs";
+import {NOTES_KEY,PREVIOUS_KEY,readNotes,commitNotes,restorePrevious,recoverFromExternalFile,savedRawForRescue} from "../notes-store.mjs";
 import {importNotes,exportNotes} from "../notes.mjs";
 
 class MemoryStorage{
@@ -97,4 +97,24 @@ test("old JSON backups still import and can be durably saved",()=>{
  const persisted=commitNotes(st,readNotes(st),merged.notes);
  assert.equal(merged.added,1);
  assert.deepEqual(persisted.notes["1405-8-7"],["قبلی","جدید"]);
+});
+
+test("emergency JSON recovery is explicit and never changes storage for invalid backup",()=>{
+ const corrupt='{"1405-8-7":["broken"';
+ const st=new MemoryStorage({[NOTES_KEY]:corrupt});
+ const snapshot=readNotes(st);
+ assert.ok(snapshot.fault);
+ assert.throws(()=>recoverFromExternalFile(st,snapshot,"not json"));
+ assert.equal(st.getItem(NOTES_KEY),corrupt);
+ const recovered=recoverFromExternalFile(st,snapshot,exportNotes({"1405-8-7":["نجات"]}));
+ assert.equal(recovered.fault,null);
+ assert.deepEqual(recovered.notes["1405-8-7"],["نجات"]);
+});
+test("recovery snapshot survives a failed attempt to recover corrupt storage",()=>{
+ const previous=JSON.stringify({"1405-8-7":["قابل بازیابی"]});
+ const corrupt='[';
+ const st=new MemoryStorage({[NOTES_KEY]:corrupt,[PREVIOUS_KEY]:previous});st.failKey=NOTES_KEY;
+ assert.throws(()=>restorePrevious(st,readNotes(st)),/QuotaExceededError/);
+ assert.equal(st.getItem(NOTES_KEY),corrupt);
+ assert.equal(st.getItem(PREVIOUS_KEY),previous);
 });
