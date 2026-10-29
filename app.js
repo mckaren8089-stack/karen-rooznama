@@ -1,18 +1,64 @@
 import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear} from "./core.mjs";
 import {normalizeNotes,noteCount,sortedDays,exportNotes,importNotes} from "./notes.mjs";
+import {NOTES_KEY,readNotes,commitNotes,restorePrevious,savedRawForRescue} from "./notes-store.mjs";
 const root=document.getElementById("app");
 const today=()=>tehran().day;
 let selected=today(),month={y:selected.y,m:selected.m},view="month";
 let converterMode="j2g",conversion=null,convertError="",feedback="",editing=null;
 const requestedYears=new Set();
-let notes=Object.create(null);
-try{notes=normalizeNotes(JSON.parse(localStorage.getItem("karen-rooznama-notes-v1")||"{}"));}catch{notes=Object.create(null);}
+let noteState;
+try{noteState=readNotes(window.localStorage);}
+catch{noteState={notes:Object.create(null),raw:null,previousAvailable:false,fault:"مرورگر اجازه دسترسی به حافظه یادداشت‌ها را نمی‌دهد."};}
+let notes=noteState.notes;
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const gdate=ms=>new Intl.DateTimeFormat("en-GB",{timeZone:"UTC",year:"numeric",month:"long",day:"numeric"}).format(new Date(ms));
 const formatJ=a=>fa(a.d)+" "+months[a.m-1]+" "+fa(a.y);
-function save(){
- try{localStorage.setItem("karen-rooznama-notes-v1",JSON.stringify(notes));return true;}
- catch{feedback="ذخیره در مرورگر امکان‌پذیر نیست. فضای دستگاه و تنظیمات مرورگر را بررسی کن.";return false;}
+function showFeedback(message){
+ feedback=message;
+ const container=root.querySelector(".wrap");
+ if(!container)return;
+ let node=container.querySelector(".message");
+ if(!node){
+  node=document.createElement("div");
+  node.className="message";node.setAttribute("role","status");
+  container.querySelector(".tabs")?.after(node);
+ }
+ if(node)node.textContent=message;
+}
+async function changeNotes(modify,success,afterSuccess){
+ try{
+  const run=()=>{
+   if(noteState.fault)throw Error(noteState.fault);
+   const draft=normalizeNotes(notes);
+   if(modify(draft)===false)return false;
+   const committed=commitNotes(window.localStorage,noteState,draft);
+   noteState=committed;notes=committed.notes;
+   return true;
+  };
+  const ok=navigator.locks&&typeof navigator.locks.request==="function"
+    ?await navigator.locks.request(NOTES_KEY,{mode:"exclusive"},run)
+    :run();
+  if(ok===false)return false;
+  if(afterSuccess)afterSuccess();
+  feedback=typeof success==="function"?success():success;
+  render();
+  return true;
+ }catch(err){
+  showFeedback("تغییر ذخیره نشد: "+(err?.message||"خطای حافظه دستگاه. از داده‌های فعلی پشتیبان تهیه کن."));
+  return false;
+ }
+}
+function downloadText(text,filename,type="application/json;charset=utf-8"){
+ const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+function notesWarning(){
+ if(!noteState.fault)return "";
+ return '<section class="card" role="alert"><h2>حفاظت از یادداشت‌ها</h2><p>'+escape(noteState.fault)+'</p><p>برای جلوگیری از پاک‌شدن یادداشت‌های قبلی، ثبت و ویرایش موقتاً غیرفعال است. داده خام را برای بررسی ذخیره کن.</p>'
+ +(noteState.raw!==null?'<button class="btn" data-act="export-raw" type="button">دریافت داده خام برای نجات</button>':'')
+ +(noteState.previousAvailable?'<button class="btn" data-act="restore-previous" type="button">بازیابی آخرین نسخه سالم</button>':'')
+ +'</section>';
 }
 function header(){
  const now=tehran();
@@ -40,7 +86,7 @@ function noteItems(day,items){
 function details(){
  const ms=toMs(selected.y,selected.m,selected.d),day=dateKey(selected),list=notes[day]||[],events=eventsOn(selected);
  const displayed=(weekday(ms)===6?'<div class="event h">جمعه · تعطیلی هفتگی</div>':'')+events.map(x=>'<div class="event'+(x.holiday?' h':'')+'">'+escape(x.title)+'</div>').join("");
- return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||'<p class="muted">مناسبتی ثبت نشده است.</p>')+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary">ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button></aside>';
+ return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||'<p class="muted">مناسبتی ثبت نشده است.</p>')+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary" '+(noteState.fault?'disabled':'')+'>ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button></aside>';
 }
 function monthPage(){return '<main class="layout"><section class="card">'+nav(months[month.m-1]+' '+fa(month.y))+grid()+'</section>'+details()+'</main>';}
 function yearPage(){return '<main class="layout"><section class="card">'+nav('سال '+fa(month.y))+'<div class="yeargrid">'+months.map((m,i)=>'<button class="monthbtn" data-act="openmonth" data-m="'+(i+1)+'">'+m+'</button>').join("")+'</div></section>'+details()+'</main>';}
@@ -53,14 +99,14 @@ function convertPage(){
 }
 function notesPage(){
  const count=noteCount(notes),days=sortedDays(notes);
- return '<main class="card"><div class="head"><h2>همه یادداشت‌های من</h2><span class="countpill">'+fa(count)+' یادداشت</span></div><p class="muted">یادداشت‌ها به روز مربوط وصل‌اند. با لمس تاریخ، همان روز در تقویم باز می‌شود. اطلاعات فقط روی همین مرورگر ذخیره می‌شوند.</p><div class="backuptools"><button class="btn" type="button" data-act="export" '+(count?'':'disabled')+'>دریافت پشتیبان JSON</button><button class="btn" type="button" data-act="import">بازیابی از JSON</button><input type="file" id="backupfile" accept=".json,application/json" hidden aria-label="انتخاب فایل پشتیبان JSON"></div>'+(!count?'<div class="empty">هنوز یادداشتی ثبت نشده است. از نمای ماه، یک روز را انتخاب کن و یادداشت بنویس.</div>':'<div class="notehistory">'+days.map(day=>{const bits=day.split("-").map(Number),j={y:bits[0],m:bits[1],d:bits[2]};return '<section class="historyday"><div class="historyhead"><button type="button" class="btn" data-act="open-noted-day" data-key="'+day+'">'+formatJ(j)+' · مشاهده در تقویم</button><span class="muted">'+fa(notes[day].length)+' یادداشت</span></div>'+noteItems(day,notes[day])+'</section>';}).join("")+'</div>')+'<p class="muted">بازیابی با یادداشت‌های موجود ادغام می‌شود و نسخه تکراری یک متن را دوباره وارد نمی‌کند. برای انتقال به دستگاه دیگر، فایل JSON را خودت منتقل کن.</p></main>';
+ return '<main class="card"><div class="head"><h2>همه یادداشت‌های من</h2><span class="countpill">'+fa(count)+' یادداشت</span></div><p class="muted">یادداشت‌ها به روز مربوط وصل‌اند. با لمس تاریخ، همان روز در تقویم باز می‌شود. اطلاعات فقط روی همین مرورگر ذخیره می‌شوند.</p><div class="backuptools"><button class="btn" type="button" data-act="export" '+(count?'':'disabled')+'>دریافت پشتیبان JSON</button><button class="btn" type="button" data-act="import" '+(noteState.fault?'disabled':'')+'>بازیابی از JSON</button>'+(noteState.previousAvailable?'<button class="btn" type="button" data-act="restore-previous">بازیابی نسخه ذخیره‌شده قبلی</button>':'')+'<input type="file" id="backupfile" accept=".json,application/json" hidden aria-label="انتخاب فایل پشتیبان JSON"></div>'+(!count?'<div class="empty">هنوز یادداشتی ثبت نشده است. از نمای ماه، یک روز را انتخاب کن و یادداشت بنویس.</div>':'<div class="notehistory">'+days.map(day=>{const bits=day.split("-").map(Number),j={y:bits[0],m:bits[1],d:bits[2]};return '<section class="historyday"><div class="historyhead"><button type="button" class="btn" data-act="open-noted-day" data-key="'+day+'">'+formatJ(j)+' · مشاهده در تقویم</button><span class="muted">'+fa(notes[day].length)+' یادداشت</span></div>'+noteItems(day,notes[day])+'</section>';}).join("")+'</div>')+'<p class="muted">بازیابی با یادداشت‌های موجود ادغام می‌شود و نسخه تکراری یک متن را دوباره وارد نمی‌کند. برای انتقال به دستگاه دیگر، فایل JSON را خودت منتقل کن.</p></main>';
 }
 function render(){
  const years=[month.y,selected.y];
  for(const y of years){
   if(!requestedYears.has(y)){requestedYears.add(y);loadYear(y).then(ok=>{if(ok)render();});}
  }
- root.innerHTML=header()+(feedback?'<div class="message" role="status">'+escape(feedback)+'</div>':'')+(view==="month"?monthPage():view==="year"?yearPage():view==="convert"?convertPage():notesPage())+'</div>';
+ root.innerHTML=header()+(feedback?'<div class="message" role="status">'+escape(feedback)+'</div>':'')+notesWarning()+(view==="month"?monthPage():view==="year"?yearPage():view==="convert"?convertPage():notesPage())+'</div>';
 }
 function showDay(){render();if(window.matchMedia&&matchMedia("(max-width:760px)").matches)requestAnimationFrame(()=>document.getElementById("details")?.scrollIntoView({behavior:"smooth",block:"start"}));}
 function changeMonth(step){
