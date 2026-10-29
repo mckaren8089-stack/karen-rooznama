@@ -116,7 +116,7 @@ function changeMonth(step){
  const max=(toMs(next.y,next.m,1)-toMs(month.y,month.m,1))/86400000;
  selected={y:month.y,m:month.m,d:Math.min(selected.d,max)};
 }
-document.addEventListener("click",e=>{
+document.addEventListener("click",async e=>{
  const b=e.target.closest("button[data-act]");if(!b)return;
  const act=b.dataset.act;
  if(act!=="delete")feedback="";
@@ -132,25 +132,38 @@ document.addEventListener("click",e=>{
  case "open-noted-day":{const d=b.dataset.key.split("-").map(Number);selected={y:d[0],m:d[1],d:d[2]};month={y:selected.y,m:selected.m};view="month";showDay();return;}
  case "edit":editing={key:b.dataset.key,index:Number(b.dataset.index)};break;
  case "cancel-edit":editing=null;break;
- case "delete":{if(!confirm("این یادداشت حذف شود؟"))return;const k=b.dataset.key,items=notes[k]||[];items.splice(Number(b.dataset.index),1);if(!items.length)delete notes[k];editing=null;if(save())feedback="یادداشت حذف شد.";break;}
+ case "delete":{if(!confirm("این یادداشت حذف شود؟"))return;const k=b.dataset.key,index=Number(b.dataset.index),expected=notes[k]?.[index];await changeNotes(draft=>{const items=draft[k];if(!items||items[index]!==expected)throw Error("یادداشت تغییر کرده است؛ صفحه را تازه‌سازی کن.");items.splice(index,1);if(!items.length)delete draft[k];return true;},"یادداشت حذف شد.",()=>{editing=null;});return;}
  case "jump":if(conversion){selected=jalali(conversion.ms);month={y:selected.y,m:selected.m};view="month";showDay();return;}break;
- case "export":{const blob=new Blob([exportNotes(notes)],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="karen-rooznama-notes.json";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);feedback="فایل پشتیبان برای دریافت آماده شد.";break;}
+ case "export":downloadText(exportNotes(notes),"karen-rooznama-notes.json");feedback="درخواست دریافت پشتیبان ارسال شد؛ وجود فایل را در پوشه دانلود بررسی کن.";break;
+ case "export-raw":downloadText(savedRawForRescue(noteState),"karen-rooznama-recovery-raw.txt","text/plain;charset=utf-8");showFeedback("داده خام برای بررسی دریافت شد؛ فایل را حذف نکن.");return;
+ case "restore-previous":{
+  if(!confirm("این کار یادداشت‌های فعلی را با نسخه ذخیره‌شده قبلی جایگزین می‌کند. پیش از ادامه، از وضعیت فعلی پشتیبان JSON یا فایل خام گرفته‌ای؟"))return;
+  try{
+   const run=()=>restorePrevious(window.localStorage,noteState);
+   const restored=navigator.locks&&typeof navigator.locks.request==="function"
+     ?await navigator.locks.request(NOTES_KEY,{mode:"exclusive"},run):run();
+   noteState=restored;notes=restored.notes;editing=null;
+   feedback="نسخه قبلی بازیابی شد. از یادداشت‌های بازیابی‌شده یک پشتیبان JSON بگیر.";render();
+  }catch(err){showFeedback("بازیابی انجام نشد: "+(err?.message||"خطای حافظه دستگاه"));}
+  return;
+ }
  case "import":document.getElementById("backupfile")?.click();return;
  default:return;
  }
  render();
 });
-document.addEventListener("submit",e=>{
+document.addEventListener("submit",async e=>{
  if(e.target.id==="editform"){
   e.preventDefault();
   const key=e.target.dataset.key,index=Number(e.target.dataset.index),value=e.target.elements.content.value.trim();
   if(value&&notes[key]&&index>=0&&index<notes[key].length){
-   notes[key][index]=value.slice(0,140);editing=null;if(save())feedback="ویرایش یادداشت ذخیره شد.";render();
+   const expected=notes[key][index];
+   await changeNotes(draft=>{if(!draft[key]||draft[key][index]!==expected)throw Error("یادداشت در جای دیگری تغییر کرده است.");draft[key][index]=value.slice(0,140);return true;},"ویرایش یادداشت ذخیره شد.",()=>{editing=null;});
   }
  }
  if(e.target.id==="noteform"){
   e.preventDefault();const value=e.target.querySelector("input").value.trim();if(!value)return;
-  const k=dateKey(selected);notes[k]=notes[k]||[];if(notes[k].length>=200){feedback="حداکثر تعداد یادداشت برای این روز ثبت شده است؛ پیش از ادامه پشتیبان تهیه کن.";render();return;}notes[k].push(value.slice(0,140));if(save())feedback="یادداشت برای "+formatJ(selected)+" ثبت شد.";render();
+  const k=dateKey(selected);await changeNotes(draft=>{const list=draft[k]||[];if(list.length>=200)throw Error("حداکثر تعداد یادداشت برای این روز ثبت شده است.");list.push(value.slice(0,140));draft[k]=list;return true;},"یادداشت برای "+formatJ(selected)+" ثبت شد.");
  }
  if(e.target.id==="convertform"){
   e.preventDefault();const data=new FormData(e.target),y=Number(data.get("y")),m=Number(data.get("m")),d=Number(data.get("d"));
@@ -173,10 +186,20 @@ document.addEventListener("change",async e=>{
  const file=e.target.files?.[0];if(!file)return;
  try{
   if(file.size>2_000_000)throw Error("حجم فایل پشتیبان بیش از حد مجاز است.");
-  const result=importNotes(await file.text(),notes);notes=result.notes;
-  if(save())feedback=fa(result.added)+" یادداشت جدید از فایل JSON بازیابی شد.";
+  const text=await file.text();let added=0;
+  await changeNotes(draft=>{const result=importNotes(text,draft);added=result.added;for(const k of Object.keys(draft))delete draft[k];Object.assign(draft,result.notes);return true;},()=>fa(added)+" یادداشت جدید از فایل JSON بازیابی شد.");
+  e.target.value="";return;
  }catch(err){feedback="بازیابی انجام نشد: "+(err?.message||"فایل نامعتبر است.");}
  render();
+});
+window.addEventListener("storage",event=>{
+ if(event.key!==NOTES_KEY&&event.key!==null)return;
+ const focused=document.activeElement?.closest?.("#noteform,#editform");
+ if(focused){showFeedback("یادداشت‌ها در زبانه دیگری تغییر کرده‌اند. برای دیدن نسخه جدید، صفحه را تازه‌سازی کن.");return;}
+ try{
+  noteState=readNotes(window.localStorage);notes=noteState.notes;editing=null;
+  feedback="یادداشت‌ها با تغییرات زبانه دیگر هماهنگ شدند.";render();
+ }catch{showFeedback("ارتباط با حافظه یادداشت‌ها قطع شده است.");}
 });
 render();
 setInterval(()=>{const c=document.querySelector(".clock");if(c)c.textContent=tehran().time;},30000);
