@@ -31,3 +31,10 @@ No changes to production app, manifest ID, start_url, scope, notes key, or domai
 2. Use Chrome DevTools on desktop or Work browser (if available) for installability/SW lifecycle; capture errors.
 3. On Android 15 and 16, collect OS-labelled Chrome/WebAPK diagnostics without clearing site data.
 4. Propose reversible fix on separate branch only after causal evidence.
+
+## Executed live test result — 2026-10-29
+GitHub Actions run: https://github.com/mckaren8089-stack/karen-rooznama/actions/runs/40863748297
+Result: SUCCESS. Job 123413170976 succeeded.
+Published endpoint results: root 200 text/html (686 bytes); manifest 200 application/manifest+json (770 bytes); icons 192 (20464 bytes), 512 (60785 bytes), maskable 512 (65127 bytes), each 200 image/png with validated PNG signature and dimensions; sw.js 200 application/javascript (1489 bytes); app.js 200 application/javascript (14866 bytes).
+Manifest id, start_url, scope resolve to Pages app root. Structural SW registration string exists. Existing Validate Rooznama CI run 40863748234 also succeeded.
+Interpretation: Missing published icons, malformed PNG dimensions, incorrect manifest content type or plain HTTP 404 on tested files are not supported by this live test. This does NOT prove successful runtime SW installation, Chrome installability, WebAPK packaging or Android installation. Root cause remains unknown.
