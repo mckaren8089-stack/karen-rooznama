@@ -38,3 +38,21 @@ Result: SUCCESS. Job 123413170976 succeeded.
 Published endpoint results: root 200 text/html (686 bytes); manifest 200 application/manifest+json (770 bytes); icons 192 (20464 bytes), 512 (60785 bytes), maskable 512 (65127 bytes), each 200 image/png with validated PNG signature and dimensions; sw.js 200 application/javascript (1489 bytes); app.js 200 application/javascript (14866 bytes).
 Manifest id, start_url, scope resolve to Pages app root. Structural SW registration string exists. Existing Validate Rooznama CI run 40863748234 also succeeded.
 Interpretation: Missing published icons, malformed PNG dimensions, incorrect manifest content type or plain HTTP 404 on tested files are not supported by this live test. This does NOT prove successful runtime SW installation, Chrome installability, WebAPK packaging or Android installation. Root cause remains unknown.
+
+## Cross-app same-origin discovery — 2026-10-29 (priority HIGH)
+
+Source code checked in `mckaren8089-stack/karen-fuse`:
+- Karen Fuse manifest has `start_url: "./"`, `scope: "./"`, no explicit `id`; Rooznama manifest has `id: "./"`, `start_url: "./"`, `scope: "./"`. Both GitHub Pages project sites live on the exact HTTPS origin `mckaren8089-stack.github.io`, but under separate directory scopes. The URLs are not independent origins.
+- User evidence: Karen Fuse appears in Android 15 `chrome://webapks`, Rooznama does NOT. This does not prove any "Already installed" message on Android 15.
+- Chromium bug https://issues.chromium.org/issues/572287931 (2026-10-11, duplicate of 568841400) documents a regression in installing a second WebAPK under a different path on the SAME origin. The issue describes "already installed" on another environment, not necessarily the user's error. Treat as a plausible **Chrome-origin WebAPK collision**, not as a confirmed root cause or a device observation.
+- Official Chrome guidance recommends **distinct origins** for independent PWAs; see https://web.dev/blog/building-multiple-pwas-on-the-same-domain (same-origin independent path pattern not recommended).
+- **Independently confirmed code defect:** Karen Fuse `sw.js` originally removes every CacheStorage entry other than `karen-fuse-v0.4.2` in its activation. CacheStorage is shared per origin even with separate service-worker scopes, so it can delete Rooznama's cached assets. Reversible repair proposed in Karen Fuse draft PR https://github.com/mckaren8089-stack/karen-fuse/pull/7 . This cache defect is NOT proof of WebAPK minting failure.
+
+### Root-cause discrimination test (requires actual Android 15)
+Publish **exact same Rooznama code without PWA identity edits** on a separate free HTTPS origin using a separate GitHub Pages organization/owner; do NOT take down or redirect the existing deployment. Attempt Chrome WebAPK installation on Android 15 from this origin. Verify a separate entry in Android Settings > Apps and standalone launch (not a shortcut). Compare with current origin failure. If different-origin WebAPK succeeds, this strongly supports origin-level collision. If it fails, inspect on-device Chrome/WebAPK logs and runtime installability, and do not claim a fixed cause.
+
+### Safety before any origin migration
+Both applications' `localStorage` are scoped to the old origin. Create explicit JSON backups and a reviewed migration plan before moving user data or redirecting any URL. A test replica must not silently replace existing PWA identity or change the production `id`, `scope` or `start_url`. Keep Android 14 functioning.
+
+### Blockers
+GitHub connector available here has no create-organization/create-repository action, and ChatGPT Work's cloud browser cannot be launched from this conversational tool context. Requires owner-created destination GitHub organization/repo or Work mode, after which deployment can be automated from GitHub Actions. No real Android 15 installation has yet been executed by this assistant.
