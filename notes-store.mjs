@@ -1,5 +1,5 @@
 /* Durable local-only note storage, compatible with the original v1 key. */
-import {normalizeNotes} from "./notes.mjs";
+import {normalizeNotes,importNotes} from "./notes.mjs";
 export const NOTES_KEY="karen-rooznama-notes-v1";
 export const PREVIOUS_KEY="karen-rooznama-notes-previous-v1";
 
@@ -55,3 +55,14 @@ export function restorePrevious(storage,baseline){
  return readNotes(storage);
 }
 export function savedRawForRescue(state){return state.raw===null?"":state.raw;}
+
+export function recoverFromExternalFile(storage,baseline,jsonText){
+ if(!baseline.fault)throw Error("بازیابی اضطراری فقط برای وضعیت خراب یا غیرقابل خواندن است.");
+ const current=storage.getItem(NOTES_KEY);
+ if(current!==baseline.raw)throw Error("داده‌ها در پنجره دیگری تغییر کرده‌اند؛ صفحه را تازه‌سازی کن.");
+ // Parse and verify before touching persistent storage.
+ const parsed=importNotes(jsonText,Object.create(null));
+ if(!Object.keys(parsed.notes).length)throw Error("فایل پشتیبان فاقد یادداشت معتبر است.");
+ storage.setItem(NOTES_KEY,JSON.stringify(parsed.notes));
+ return readNotes(storage);
+}
