@@ -19,17 +19,15 @@ function decode(raw){
  return normalized;
 }
 export function readNotes(storage){
- let raw=null,previousRaw=null;
+ let raw=null,previousRaw=null,previousAvailable=false;
  try{
-  raw=storage.getItem(NOTES_KEY);
   previousRaw=storage.getItem(PREVIOUS_KEY);
-  const notes=raw===null?Object.create(null):decode(raw);
-  // A bad historical snapshot must not prevent use of a valid primary.
-  let previousAvailable=false;
   if(previousRaw!==null){try{decode(previousRaw);previousAvailable=true;}catch{}}
+  raw=storage.getItem(NOTES_KEY);
+  const notes=raw===null?Object.create(null):decode(raw);
   return {notes,raw,previousAvailable,fault:null};
  }catch(err){
-  return {notes:Object.create(null),raw,previousAvailable:false,
+  return {notes:Object.create(null),raw,previousAvailable,
    fault:"یادداشت‌های موجود قابل خواندن نیستند. برای جلوگیری از حذف اطلاعات، ذخیره‌سازی متوقف شده است."};
  }
 }
@@ -46,15 +44,14 @@ export function commitNotes(storage,baseline,next){
  return {notes:normalized,raw:value,previousAvailable:current!==null,fault:null};
 }
 export function restorePrevious(storage,baseline){
- if(baseline.fault)throw Error("ابتدا از داده‌های فعلی نسخه خام دریافت و بررسی کن.");
  const current=storage.getItem(NOTES_KEY);
  if(current!==baseline.raw)throw Error("داده‌ها در پنجره دیگری تغییر کرده‌اند؛ صفحه را تازه‌سازی کن.");
  const previousRaw=storage.getItem(PREVIOUS_KEY);
  if(previousRaw===null)throw Error("نسخه قبلی وجود ندارد.");
- const previous=decode(previousRaw);
- // Make an undo of the restore operation possible.
- if(current!==null)storage.setItem(PREVIOUS_KEY,current);
+ decode(previousRaw);
+ // Deliberately keep the recovery snapshot. The user must export current notes
+ // before replacing them, as swapping snapshots could lose the sole good copy.
  storage.setItem(NOTES_KEY,previousRaw);
- return {notes:previous,raw:previousRaw,previousAvailable:current!==null,fault:null};
+ return readNotes(storage);
 }
 export function savedRawForRescue(state){return state.raw===null?"":state.raw;}
