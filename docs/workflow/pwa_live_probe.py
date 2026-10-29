@@ -43,6 +43,15 @@ def main():
     assert b'addEventListener("install"' in sw
     app,_=get("app.js")
     assert b'navigator.serviceWorker.register("./sw.js")' in app
+    # Verify that the published sibling PWA no longer deletes every origin cache.
+    fuse_url = "https://mckaren8089-stack.github.io/karen-fuse/sw.js"
+    with urlopen(Request(fuse_url, headers={"User-Agent":"Karen-Rooznama-PWA-Diagnostics/1.0"}), timeout=20) as response:
+        fuse_sw = response.read().decode("utf-8")
+        print(f"FUSE LIVE HTTP {response.status} {fuse_url} bytes={len(fuse_sw)}")
+        assert response.status == 200
+        assert "key.startsWith('karen-fuse-')" in fuse_sw, "Fuse live SW still lacks scoped cache cleanup"
+        assert "keys.filter(key=>key!==CACHE)" not in fuse_sw, "Fuse live SW still has origin-wide cache deletion"
+    print("PASS: published Fuse worker cache cleanup is app-scoped")
     print("PASS: live HTTP, manifest resolution, icons, SW and entrypoint checks")
 if __name__=="__main__":
     try: main()
