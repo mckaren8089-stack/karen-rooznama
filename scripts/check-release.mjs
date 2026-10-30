@@ -16,7 +16,7 @@ assert.equal(manifest.display,"standalone");
 assert.match(index,/manifest\.webmanifest/);
 const shell=worker.match(/const SHELL=\[([\s\S]*?)\];/);
 assert.ok(shell,"Service Worker offline shell array is required");
-const assets=[...shell[1].matchAll(/"(\.\/[^"]+)"/g)].map(x=>x[1]);
+const assets=[...shell[1].matchAll(/"(\.\/[^"]*)"/g)].map(x=>x[1]);
 assert.equal(new Set(assets).size,assets.length,"Offline shell duplicates are forbidden");
 for(const path of [
  "./","./index.html","./app.js","./style.css","./core.mjs","./events.mjs",
