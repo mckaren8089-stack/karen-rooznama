@@ -8,12 +8,12 @@ permissions:
   contents: read
 jobs:
   retrieve:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 4
     steps:
       - name: Download source from Tehran University
         run: curl -fLsS --retry 2 --max-time 45 'https://calendar.ut.ac.ir/documents/2139738/7092644/Calendar-1405.pdf' -o Calendar-1405.pdf
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: official-1405-source-for-audit
           path: Calendar-1405.pdf
