@@ -1,5 +1,6 @@
 /* Offline-first app shell for Karen Rooznama. No cache access to sibling apps. */
-const VERSION="karen-rooznama-v0.4.1";
+const VERSION="karen-rooznama-v0.4.2";
+const NAVIGATION_TIMEOUT_MS=2500;
 const SHELL=[
  "./","./index.html","./app.js","./style.css","./core.mjs","./events.mjs",
  "./notes.mjs","./notes-store.mjs","./data/years/1405.json",
@@ -26,12 +27,17 @@ self.addEventListener("fetch",event=>{
   const cache=await caches.open(VERSION);
   // Navigation uses network first to discover fresh releases, but works offline.
   if(navigation){
+   // A hanging connection must not block the cached calendar indefinitely.
+   const controller=new AbortController();
+   const deadline=setTimeout(()=>controller.abort(),NAVIGATION_TIMEOUT_MS);
    try{
-    const response=await fetch(request);
+    const response=await fetch(request,{signal:controller.signal});
     if(response.ok&&shellURLs.has(url.href))event.waitUntil(cache.put(request,response.clone()));
     return response;
    }catch{
     return await cache.match(request)||await cache.match(new URL("./index.html",scope).href)||Response.error();
+   }finally{
+    clearTimeout(deadline);
    }
   }
   // Core modules + annual source load instantly from their installed offline copy.
