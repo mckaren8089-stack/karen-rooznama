@@ -9,10 +9,12 @@ permissions:
   contents: read
 jobs:
   extract:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Install PDF text extraction
@@ -21,7 +23,7 @@ jobs:
         run: node scripts/inspect-calendar-1405.mjs
       - name: Group occasion cells by day
         run: node scripts/probe-rows-1405.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: official-1405-rows
           path: staging/official-1405-rows.json
