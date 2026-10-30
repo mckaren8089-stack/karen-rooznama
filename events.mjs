@@ -19,12 +19,12 @@ export function validateYearFile(year,file){
 export function installYearSnapshot(year,json){cache.set(year,validateYearFile(year,json));status.set(year,json.status||"unreviewed");}
 export async function loadYear(year){
  if(cache.has(year))return true;
- if(!SUPPORTED_YEARS.has(year)){cache.set(year,[]);return true;}
+ if(!SUPPORTED_YEARS.has(year)){cache.set(year,[]);status.set(year,"not-imported");return true;}
  if(loading.has(year))return loading.get(year);
  const pending=fetch("./data/years/"+year+".json").then(r=>{
   if(!r.ok)throw Error("Unable to load calendar source");
   return r.json();
- }).then(json=>{cache.set(year,validateYearFile(year,json));status.set(year,json.status||"unreviewed");return true;}).catch(()=>false).finally(()=>loading.delete(year));
+ }).then(json=>{cache.set(year,validateYearFile(year,json));status.set(year,json.status||"unreviewed");return true;}).catch(()=>{status.set(year,"unavailable");return false;}).finally(()=>loading.delete(year));
  loading.set(year,pending);return pending;
 }
 export function eventsOn(a){
@@ -35,5 +35,5 @@ export function isHoliday(a,ms,weekdayIndex){
 }
 export function yearCoverage(year){
  if(!SUPPORTED_YEARS.has(year))return "not-imported";
- return cache.has(year)?(status.get(year)||"unreviewed"):"pending-load";
+ return cache.has(year)?(status.get(year)||"unreviewed"):(status.get(year)==="unavailable"?"unavailable":"pending-load");
 }
