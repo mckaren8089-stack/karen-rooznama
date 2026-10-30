@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import vm from "node:vm";
 const worker=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
+const CACHE_VERSION=worker.match(/^const VERSION="(karen-rooznama-v\d+\.\d+\.\d+)";$/m)?.[1];
+assert.ok(CACHE_VERSION,"Service Worker cache version must be valid");
 const SCOPE="https://mckaren8089-stack.github.io/karen-rooznama/";
 
 function harness(){
@@ -64,7 +66,7 @@ test("first online visit installs all app shell assets, including 1405 data",asy
  assert.equal(h.report.skipped,true);
  const keys=await h.caches.keys();
  assert.equal(keys.length,1);
- assert.equal(keys[0],"karen-rooznama-v0.4.2");
+ assert.equal(keys[0],CACHE_VERSION);
  const cache=await h.caches.open(keys[0]);
  for(const path of ["./","./index.html","./app.js","./core.mjs","./notes-store.mjs","./data/years/1405.json","./manifest.webmanifest"]){
   assert.ok(await cache.match(path),"offline cache missing "+path);
