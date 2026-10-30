@@ -11,11 +11,13 @@ permissions:
   contents: read
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 7
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install pinned PDF parser
@@ -24,7 +26,7 @@ jobs:
         run: curl -fLsS --retry 2 --max-time 45 'https://calendar.ut.ac.ir/documents/2139738/7092644/Calendar-1405.pdf' -o Calendar-1405.pdf
       - name: Verify SHA-256, 365 day cells, curated records and holiday rules
         run: python scripts/audit-official-1405.py Calendar-1405.pdf
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: official-1405-audit-report
           path: audit-1405.json
