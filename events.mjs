@@ -21,6 +21,7 @@ export async function loadYear(year){
  if(cache.has(year))return true;
  if(!SUPPORTED_YEARS.has(year)){cache.set(year,[]);status.set(year,"not-imported");return true;}
  if(loading.has(year))return loading.get(year);
+ status.set(year,"pending-load");
  const pending=fetch("./data/years/"+year+".json").then(r=>{
   if(!r.ok)throw Error("Unable to load calendar source");
   return r.json();
