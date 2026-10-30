@@ -8,9 +8,15 @@ const SCOPE="https://mckaren8089-stack.github.io/karen-rooznama/";
 function harness(){
  const listeners={},stores=new Map(),report={online:true,requested:[]};
  const key=input=>new URL(typeof input==="string"?input:input.url,SCOPE).href;
- const network=async input=>{
+ const network=async (input,options={})=>{
   const url=key(input);report.requested.push(url);
   if(!report.online)throw Error("offline");
+  if(report.hang && url.endsWith("/karen-rooznama/")){
+   return new Promise((_,reject)=>{
+    if(options.signal?.aborted)return reject(Error("aborted"));
+    options.signal?.addEventListener("abort",()=>reject(Error("aborted")),{once:true});
+   });
+  }
   if(url.endsWith("missing.mjs"))return new Response("missing",{status:404});
   return new Response("online:"+url,{status:200});
  };
@@ -31,7 +37,10 @@ function harness(){
   async skipWaiting(){report.skipped=true;},
   clients:{async claim(){report.claimed=true;}}
  };
- vm.runInNewContext(worker,{self,caches,fetch:network,URL,Response,Promise});
+ // Lower timeout only inside the test harness; production timeout stays at 2500 ms.
+ vm.runInNewContext(worker.replace("const NAVIGATION_TIMEOUT_MS=2500;","const NAVIGATION_TIMEOUT_MS=25;"),{
+  self,caches,fetch:network,URL,Response,Promise,AbortController,setTimeout,clearTimeout
+ });
  async function lifecycle(name){
   const waits=[];
   listeners[name]({waitUntil(p){waits.push(p);}});
@@ -55,7 +64,7 @@ test("first online visit installs all app shell assets, including 1405 data",asy
  assert.equal(h.report.skipped,true);
  const keys=await h.caches.keys();
  assert.equal(keys.length,1);
- assert.equal(keys[0],"karen-rooznama-v0.4.1");
+ assert.equal(keys[0],"karen-rooznama-v0.4.2");
  const cache=await h.caches.open(keys[0]);
  for(const path of ["./","./index.html","./app.js","./core.mjs","./notes-store.mjs","./data/years/1405.json","./manifest.webmanifest"]){
   assert.ok(await cache.match(path),"offline cache missing "+path);
@@ -107,4 +116,15 @@ test("fetch interception never handles a sibling app or a different domain",asyn
  const h=harness();await h.lifecycle("install");
  assert.equal(await h.request("https://mckaren8089-stack.github.io/karen-fuse/"),null);
  assert.equal(await h.request("https://other.example.com/karen-rooznama/"),null);
+});
+
+test("a stalled network request yields cached navigation rather than spinning forever",async()=>{
+ const h=harness();
+ await h.lifecycle("install");
+ h.report.hang=true;
+ const started=Date.now();
+ const response=await h.request("./","navigate");
+ assert.equal(response.status,200);
+ assert.ok((await response.text()).endsWith("/karen-rooznama/"));
+ assert.ok(Date.now()-started<700,"cached app must be returned promptly");
 });
