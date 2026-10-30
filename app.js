@@ -1,4 +1,4 @@
-import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear} from "./core.mjs";
+import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear,yearCoverage} from "./core.mjs";
 import {normalizeNotes,noteCount,sortedDays,exportNotes,importNotes} from "./notes.mjs";
 import {NOTES_KEY,readNotes,commitNotes,restorePrevious,recoverFromExternalFile,savedRawForRescue} from "./notes-store.mjs";
 const root=document.getElementById("app");
@@ -83,10 +83,18 @@ function noteItems(day,items){
   return '<div class="noteitem"><span>'+escape(x)+'</span><button type="button" class="noteeditbtn" data-act="edit" data-key="'+day+'" data-index="'+i+'" aria-label="ویرایش یادداشت">ویرایش</button><button type="button" class="remove" data-act="delete" data-key="'+day+'" data-index="'+i+'" aria-label="حذف یادداشت">×</button></div>';
  }).join("");
 }
+function occasionStatus(year){
+ const status=yearCoverage(year);
+ if(status==="reviewed-nonreligious")return "";
+ if(status==="not-imported")return '<p class="muted" role="status">مناسبت‌های رسمی سال '+fa(year)+' هنوز به روزنما افزوده نشده‌اند. تاریخ‌ها و یادداشت‌ها قابل استفاده‌اند.</p>';
+ if(status==="unavailable")return '<p class="muted" role="status">مناسبت‌های سال '+fa(year)+' فعلاً در دسترس نیستند.</p><button class="btn" type="button" data-act="retry-year" data-year="'+year+'">تلاش دوباره برای دریافت مناسبت‌ها</button>';
+ if(status==="pending-load")return '<p class="muted" role="status">در حال دریافت مناسبت‌های رسمی این سال…</p>';
+ return '<p class="muted" role="status">اطلاعات مناسبت‌های این سال هنوز تأیید نشده است.</p>';
+}
 function details(){
  const ms=toMs(selected.y,selected.m,selected.d),day=dateKey(selected),list=notes[day]||[],events=eventsOn(selected);
  const displayed=(weekday(ms)===6?'<div class="event h">جمعه · تعطیلی هفتگی</div>':'')+events.map(x=>'<div class="event'+(x.holiday?' h':'')+'">'+escape(x.title)+'</div>').join("");
- return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||'<p class="muted">مناسبتی ثبت نشده است.</p>')+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary" '+(noteState.fault?'disabled':'')+'>ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button></aside>';
+ return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||((yearCoverage(selected.y)==="reviewed-nonreligious")?'<p class="muted">مناسبتی ثبت نشده است.</p>':""))+occasionStatus(selected.y)+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary" '+(noteState.fault?'disabled':'')+'>ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button></aside>';
 }
 function monthPage(){return '<main class="layout"><section class="card">'+nav(months[month.m-1]+' '+fa(month.y))+grid()+'</section>'+details()+'</main>';}
 function yearPage(){return '<main class="layout"><section class="card">'+nav('سال '+fa(month.y))+'<div class="yeargrid">'+months.map((m,i)=>'<button class="monthbtn" data-act="openmonth" data-m="'+(i+1)+'">'+m+'</button>').join("")+'</div></section>'+details()+'</main>';}
@@ -104,13 +112,13 @@ function notesPage(){
 function render(){
  const years=[month.y,selected.y];
  for(const y of years){
-  if(!requestedYears.has(y)){requestedYears.add(y);loadYear(y).then(ok=>{if(ok)render();});}
+  if(!requestedYears.has(y)){requestedYears.add(y);loadYear(y).then(()=>render());}
  }
  root.innerHTML=header()+(feedback?'<div class="message" role="status">'+escape(feedback)+'</div>':'')+notesWarning()+(view==="month"?monthPage():view==="year"?yearPage():view==="convert"?convertPage():notesPage())+'</div>';
 }
 function showDay(){render();if(window.matchMedia&&matchMedia("(max-width:760px)").matches)requestAnimationFrame(()=>document.getElementById("details")?.scrollIntoView({behavior:"smooth",block:"start"}));}
 function changeMonth(step){
- if(view==="year"){month.y+=step;return;}
+ if(view==="year"){month.y+=step;selected={y:month.y,m:1,d:1};return;}
  month=shift(month.y,month.m,step);
  const next=shift(month.y,month.m,1);
  const max=(toMs(next.y,next.m,1)-toMs(month.y,month.m,1))/86400000;
@@ -125,6 +133,7 @@ document.addEventListener("click",async e=>{
  case "view":view=b.dataset.view;conversion=null;convertError="";break;
  case "viewnotes":view="notes";break;
  case "direction":converterMode=b.dataset.dir;conversion=null;convertError="";break;
+ case "retry-year":{const y=Number(b.dataset.year);if(!Number.isInteger(y))return;requestedYears.add(y);loadYear(y).then(()=>render());render();return;}
  case "prev":changeMonth(-1);break;
  case "next":changeMonth(1);break;
  case "pick":selected=jalali(Number(b.dataset.ms));month={y:selected.y,m:selected.m};showDay();return;
