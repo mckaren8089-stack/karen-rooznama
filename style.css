@@ -82,15 +82,15 @@
 @media(max-width:400px){.taskedit{grid-template-columns:1fr 1fr}.taskedit input{grid-column:1/-1}.tasksmall{padding:5px}.daytask{left:2px;bottom:2px}}
 
 /* Compact live Tehran date and month context; preserve the existing calendar. */
-.todaybar{display:flex;align-items:center;gap:10px;max-width:100%}
-.todayinfo{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:.82rem;line-height:1.8}
+.todaybar{display:flex;align-items:center;gap:8px;max-width:100%}
+.todayinfo{display:flex;flex-direction:column;gap:2px;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:11px;background:var(--surface2);font-size:.86rem;line-height:1.65}
 .timeinfo{color:var(--muted)}
 .clock{display:inline-block;font-variant-numeric:tabular-nums}
 .monthtitle{min-width:0;text-align:left}
 .gregorianrange{font-size:.75rem;overflow-wrap:anywhere}
 .signature{text-align:center;padding-bottom:0}
 @media(max-width:400px){
- .todaybar{width:100%}.todayinfo{font-size:.8rem}
+ .todaybar{width:100%}.todayinfo{flex:1;padding:6px 8px;font-size:.86rem}
  .brand{gap:8px}.brand h1{font-size:1.25rem}
  .head{align-items:flex-start}.arrows .btn{padding:10px;min-width:44px}
  .day{padding:2px 0 18px}.daytask,.daynote{min-width:14px;height:14px;line-height:14px;font-size:.65rem}

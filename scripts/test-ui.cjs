@@ -91,12 +91,21 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
    await page.setViewportSize({width,height:800});
    const layout=await page.evaluate(()=>{
     const note=document.querySelector('.daynote').getBoundingClientRect(),task=document.querySelector('.daytask').getBoundingClientRect();
+    const info=document.querySelector('.todayinfo'),frame=info.getBoundingClientRect(),style=getComputedStyle(info);
+    const date=document.querySelector('.todaydate').getBoundingClientRect(),clock=document.querySelector('.clock').getBoundingClientRect();
     return {rtl:getComputedStyle(document.documentElement).direction,overflow:document.documentElement.scrollWidth>innerWidth,
      clock:getComputedStyle(document.querySelector('.clock')).display,
+     framed:parseFloat(style.borderTopWidth)>0&&style.backgroundColor!=='rgba(0, 0, 0, 0)',
+     dateFont:parseFloat(style.fontSize),frameHeight:frame.height,
+     contained:date.left>=frame.left&&date.right<=frame.right&&clock.left>=frame.left&&clock.right<=frame.right,
      overlap:!(note.right<=task.left||task.right<=note.left||note.bottom<=task.top||task.bottom<=note.top)};
    });
    assert.equal(layout.rtl,'rtl');assert.equal(layout.overflow,false,'overflow at '+width);
    assert.notEqual(layout.clock,'none');assert.equal(layout.overlap,false,'badge overlap at '+width);
+   assert.equal(layout.framed,true,'date/time frame missing at '+width);
+   assert.ok(layout.dateFont>=13.5,'readable date text at '+width);
+   assert.ok(layout.frameHeight<=64,'compact date/time frame at '+width);
+   assert.equal(layout.contained,true,'date/time outside frame at '+width);
    await page.screenshot({path:output+'/after-'+width+'.png',fullPage:true});
   }
   assert.equal(await page.locator('footer').innerText(),'McKaren · نسخهٔ ۰.۵.۱');
