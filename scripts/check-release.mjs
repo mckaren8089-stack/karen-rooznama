@@ -20,7 +20,7 @@ const assets=[...shell[1].matchAll(/"(\.\/[^"]*)"/g)].map(x=>x[1]);
 assert.equal(new Set(assets).size,assets.length,"Offline shell duplicates are forbidden");
 for(const path of [
  "./","./index.html","./app.js","./style.css","./core.mjs","./events.mjs",
- "./notes.mjs","./notes-store.mjs","./manifest.webmanifest","./data/years/1405.json",
+ "./notes.mjs","./notes-store.mjs","./tasks.mjs","./tasks-store.mjs","./manifest.webmanifest","./data/years/1405.json",
  "./assets/faravahar.svg"
 ]){
  assert.ok(assets.includes(path),"Missing offline-critical resource "+path);
