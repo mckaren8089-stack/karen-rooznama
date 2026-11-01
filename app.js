@@ -1,6 +1,8 @@
 import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear,yearCoverage} from "./core.mjs";
 import {normalizeNotes,noteCount,sortedDays,exportNotes,importNotes} from "./notes.mjs";
 import {NOTES_KEY,readNotes,commitNotes,restorePrevious,recoverFromExternalFile,savedRawForRescue} from "./notes-store.mjs";
+import {validateTasks,taskCount,exportTasks,importTasks,MAX_TASKS_PER_DAY} from "./tasks.mjs";
+import {TASKS_KEY,readTasks,commitTasks,restorePreviousTasks,recoverTasks} from "./tasks-store.mjs";
 const root=document.getElementById("app");
 const today=()=>tehran().day;
 let selected=today(),month={y:selected.y,m:selected.m},view="month";
@@ -10,6 +12,11 @@ let noteState;
 try{noteState=readNotes(window.localStorage);}
 catch{noteState={notes:Object.create(null),raw:null,previousAvailable:false,fault:"مرورگر اجازه دسترسی به حافظه یادداشت‌ها را نمی‌دهد."};}
 let notes=noteState.notes;
+let taskState;
+try{taskState=readTasks(window.localStorage);}
+catch{taskState={tasks:Object.create(null),raw:null,previousAvailable:false,fault:"مرورگر اجازه دسترسی به حافظه کارها را نمی‌دهد."};}
+let tasks=taskState.tasks,editingTask=null;
+const newTaskId=()=>globalThis.crypto?.randomUUID?.()||("t"+Date.now().toString(36)+Math.random().toString(36).slice(2));
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const gdate=ms=>new Intl.DateTimeFormat("en-GB",{timeZone:"UTC",year:"numeric",month:"long",day:"numeric"}).format(new Date(ms));
 const formatJ=a=>fa(a.d)+" "+months[a.m-1]+" "+fa(a.y);
@@ -48,6 +55,27 @@ async function changeNotes(modify,success,afterSuccess){
   return false;
  }
 }
+async function changeTasks(modify,success,afterSuccess){
+ try{
+  const run=()=>{
+   if(taskState.fault)throw Error(taskState.fault);
+   const draft=validateTasks(tasks);
+   if(modify(draft)===false)return false;
+   const committed=commitTasks(window.localStorage,taskState,draft);
+   taskState=committed;tasks=committed.tasks;
+   return true;
+  };
+  const ok=navigator.locks&&typeof navigator.locks.request==="function"
+   ?await navigator.locks.request(TASKS_KEY,{mode:"exclusive"},run):run();
+  if(ok===false)return false;
+  if(afterSuccess)afterSuccess();
+  feedback=typeof success==="function"?success():success;
+  render();return true;
+ }catch(err){
+  showFeedback("کار ذخیره نشد: "+(err?.message||"خطای حافظه دستگاه؛ از داده‌ها پشتیبان تهیه کن."));
+  return false;
+ }
+}
 function downloadText(text,filename,type="application/json;charset=utf-8"){
  const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
@@ -70,8 +98,8 @@ function grid(){
  const start=toMs(month.y,month.m,1),offset=weekday(start),n=shift(month.y,month.m,1),len=(toMs(n.y,n.m,1)-start)/86400000,total=Math.ceil((offset+len)/7)*7;
  let html='<div class="week">'+["ش","ی","د","س","چ","پ","ج"].map(x=>'<span>'+x+'</span>').join("")+'</div><div class="days">';
  for(let i=0;i<total;i++){
-  const ms=start+(i-offset)*86400000,d=jalali(ms),g=gregorian(ms),inside=d.y===month.y&&d.m===month.m,chosen=compare(d,selected)===0,now=compare(d,today())===0,holiday=isHoliday(d,ms),count=(notes[dateKey(d)]||[]).length;
-  html+='<button type="button" data-act="pick" data-ms="'+ms+'" class="day'+(inside?"":" out")+(chosen?" chosen":"")+(now?" now":"")+(holiday?" holiday":"")+'" aria-label="'+formatJ(d)+(count?"، "+fa(count)+" یادداشت":"")+'" aria-pressed="'+chosen+'"><span class="num">'+fa(d.d)+'</span><span class="gr">'+g.d+'</span>'+(count?'<span class="daynote" title="تعداد یادداشت">'+fa(count)+'</span>':'')+'</button>';
+  const ms=start+(i-offset)*86400000,d=jalali(ms),g=gregorian(ms),inside=d.y===month.y&&d.m===month.m,chosen=compare(d,selected)===0,now=compare(d,today())===0,holiday=isHoliday(d,ms),count=(notes[dateKey(d)]||[]).length,taskN=(tasks[dateKey(d)]||[]).filter(t=>!t.done).length;
+  html+='<button type="button" data-act="pick" data-ms="'+ms+'" class="day'+(inside?"":" out")+(chosen?" chosen":"")+(now?" now":"")+(holiday?" holiday":"")+'" aria-label="'+formatJ(d)+(count?"، "+fa(count)+" یادداشت":"")+(taskN?"، "+fa(taskN)+" کار باقی‌مانده":"")+'" aria-pressed="'+chosen+'"><span class="num">'+fa(d.d)+'</span><span class="gr">'+g.d+'</span>'+(count?'<span class="daynote" title="تعداد یادداشت">'+fa(count)+'</span>':'')+(taskN?'<span class="daytask" title="کار انجام‌نشده">'+fa(taskN)+'</span>':'')+'</button>';
  }
  return html+'</div><p class="muted calendarhint">روز دلخواه را لمس کن تا جزئیات و یادداشت‌های همان روز را ببینی. عدد کوچک کنار روز، تعداد یادداشت‌هاست.</p>';
 }
@@ -91,10 +119,30 @@ function occasionStatus(year){
  if(status==="pending-load")return '<p class="muted" role="status">در حال دریافت مناسبت‌های رسمی این سال…</p>';
  return '<p class="muted" role="status">اطلاعات مناسبت‌های این سال هنوز تأیید نشده است.</p>';
 }
+function taskItems(day,items){
+ return items.map(item=>{
+  if(editingTask&&editingTask.day===day&&editingTask.id===item.id){
+   return '<form class="taskedit" id="taskeditform" data-key="'+day+'" data-id="'+item.id+'"><input name="content" maxlength="160" required aria-label="ویرایش متن کار" value="'+escape(item.text)+'"><button type="submit" class="btn primary">ذخیره</button><button type="button" class="btn" data-act="task-cancel-edit">لغو</button></form>';
+  }
+  return '<div class="taskitem'+(item.done?' completed':'')+'"><button class="btn taskcheck" type="button" data-act="task-toggle" data-key="'+day+'" data-id="'+item.id+'" aria-pressed="'+item.done+'" aria-label="'+(item.done?'بازگشت به انجام‌نشده':'علامت‌گذاری انجام‌شده')+'">'+(item.done?'☑':'☐')+'</button><span class="tasktext">'+escape(item.text)+'</span><button class="btn tasksmall" type="button" data-act="task-edit" data-key="'+day+'" data-id="'+item.id+'">ویرایش</button><button class="remove" type="button" data-act="task-delete" data-key="'+day+'" data-id="'+item.id+'" aria-label="حذف کار">×</button></div>';
+ }).join("");
+}
+function taskSection(day){
+ const items=tasks[day]||[],pending=items.filter(x=>!x.done).length,all=taskCount(tasks);
+ const fault=taskState.fault?'<p class="error" role="alert">'+escape(taskState.fault)+'</p><p class="muted">داده‌ها حذف یا جایگزین نشده‌اند. ابتدا نسخه خام یا پشتیبان را نگه دار.</p>':'';
+ return '<section class="tasksbox" aria-label="کارهای روزانه"><div class="rule"></div><h3>کارهای این روز <span class="countpill">'+fa(pending)+' باقی‌مانده از '+fa(items.length)+'</span></h3>'
+ +fault
+ +'<form id="taskform" class="noteform"><input maxlength="160" required aria-label="کار جدید" placeholder="کار جدید برای همین روز…" '+(taskState.fault?'disabled':'')+'><button type="submit" class="btn primary" '+(taskState.fault?'disabled':'')+'>افزودن</button></form>'
+ +(items.length?taskItems(day,items):'<p class="muted">هنوز کاری برای این روز ثبت نشده است.</p>')
+ +'<div class="tasktools"><button type="button" class="btn" data-act="task-export" '+(!all?'disabled':'')+'>پشتیبان کارها JSON</button><button type="button" class="btn" data-act="task-import">بازیابی کارها</button>'
+ +(taskState.previousAvailable?'<button type="button" class="btn" data-act="task-restore-previous">نسخه قبلی کارها</button>':'')
+ +(taskState.fault&&taskState.raw!==null?'<button type="button" class="btn" data-act="task-export-raw">دریافت داده خام</button>':'')
+ +'</div><input type="file" id="tasksbackupfile" accept=".json,application/json" hidden aria-label="انتخاب فایل پشتیبان کارها"></section>';
+}
 function details(){
  const ms=toMs(selected.y,selected.m,selected.d),day=dateKey(selected),list=notes[day]||[],events=eventsOn(selected);
  const displayed=(weekday(ms)===6?'<div class="event h">جمعه · تعطیلی هفتگی</div>':'')+events.map(x=>'<div class="event'+(x.holiday?' h':'')+'">'+escape(x.title)+'</div>').join("");
- return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||((yearCoverage(selected.y)==="reviewed-nonreligious")?'<p class="muted">مناسبتی ثبت نشده است.</p>':""))+occasionStatus(selected.y)+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary" '+(noteState.fault?'disabled':'')+'>ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button></aside>';
+ return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||((yearCoverage(selected.y)==="reviewed-nonreligious")?'<p class="muted">مناسبتی ثبت نشده است.</p>':""))+occasionStatus(selected.y)+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary" '+(noteState.fault?'disabled':'')+'>ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button>'+taskSection(day)+'</aside>';
 }
 function monthPage(){return '<main class="layout"><section class="card">'+nav(months[month.m-1]+' '+fa(month.y))+grid()+'</section>'+details()+'</main>';}
 function yearPage(){return '<main class="layout"><section class="card">'+nav('سال '+fa(month.y))+'<div class="yeargrid">'+months.map((m,i)=>'<button class="monthbtn" data-act="openmonth" data-m="'+(i+1)+'">'+m+'</button>').join("")+'</div></section>'+details()+'</main>';}
