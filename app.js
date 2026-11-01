@@ -205,11 +205,38 @@ document.addEventListener("click",async e=>{
   return;
  }
  case "import":document.getElementById("backupfile")?.click();return;
+ case "task-toggle":{const k=b.dataset.key,id=b.dataset.id;
+  await changeTasks(draft=>{const item=draft[k]?.find(x=>x.id===id);if(!item)throw Error("کار تغییر کرده است؛ صفحه را تازه‌سازی کن.");item.done=!item.done;return true;},"وضعیت کار ذخیره شد.");return;}
+ case "task-edit":editingTask={day:b.dataset.key,id:b.dataset.id};break;
+ case "task-cancel-edit":editingTask=null;break;
+ case "task-delete":{if(!confirm("این کار حذف شود؟"))return;const k=b.dataset.key,id=b.dataset.id;
+  await changeTasks(draft=>{const list=draft[k],index=list?.findIndex(x=>x.id===id);if(index===undefined||index<0)throw Error("کار در جای دیگری تغییر کرده است.");list.splice(index,1);if(!list.length)delete draft[k];return true;},"کار حذف شد.",()=>{editingTask=null;});return;}
+ case "task-export":downloadText(exportTasks(tasks),"karen-rooznama-tasks.json");feedback="درخواست دریافت پشتیبان کارها ارسال شد؛ وجود فایل را بررسی کن.";break;
+ case "task-export-raw":downloadText(taskState.raw||"","karen-rooznama-tasks-rescue-raw.txt","text/plain;charset=utf-8");feedback="داده خام کارها برای نجات دریافت شد.";break;
+ case "task-import":document.getElementById("tasksbackupfile")?.click();return;
+ case "task-restore-previous":{
+  if(!confirm("نسخه قبلی کارها جایگزین وضعیت فعلی می‌شود. ابتدا از کارهای فعلی پشتیبان گرفته‌ای؟"))return;
+  try{const run=()=>restorePreviousTasks(window.localStorage,taskState);
+   const restored=navigator.locks&&typeof navigator.locks.request==="function"
+     ?await navigator.locks.request(TASKS_KEY,{mode:"exclusive"},run):run();
+   taskState=restored;tasks=restored.tasks;editingTask=null;feedback="نسخه قبلی کارها بازیابی شد. یک پشتیبان JSON تازه بگیر.";render();
+  }catch(err){showFeedback("بازیابی کارها انجام نشد: "+(err?.message||"خطای حافظه"));}
+  return;
+ }
  default:return;
  }
  render();
 });
 document.addEventListener("submit",async e=>{
+ if(e.target.id==="taskform"){
+  e.preventDefault();const text=e.target.querySelector("input")?.value.trim();if(!text)return;
+  const key=dateKey(selected),id=newTaskId();
+  await changeTasks(draft=>{const list=draft[key]||[];if(list.length>=MAX_TASKS_PER_DAY)throw Error("حداکثر تعداد کار روز پر شده است.");list.push({id,text:text.slice(0,160),done:false});draft[key]=list;return true;},"کار جدید ثبت شد.");return;
+ }
+ if(e.target.id==="taskeditform"){
+  e.preventDefault();const key=e.target.dataset.key,id=e.target.dataset.id,text=e.target.elements.content.value.trim();if(!text)return;
+  await changeTasks(draft=>{const item=draft[key]?.find(x=>x.id===id);if(!item)throw Error("کار در جای دیگری تغییر کرده است.");item.text=text.slice(0,160);return true;},"ویرایش کار ذخیره شد.",()=>{editingTask=null;});return;
+ }
  if(e.target.id==="editform"){
   e.preventDefault();
   const key=e.target.dataset.key,index=Number(e.target.dataset.index),value=e.target.elements.content.value.trim();
@@ -239,6 +266,23 @@ document.addEventListener("submit",async e=>{
  }
 });
 document.addEventListener("change",async e=>{
+ if(e.target.id==="tasksbackupfile"){
+  const file=e.target.files?.[0];if(!file)return;
+  try{
+   if(file.size>2_000_000)throw Error("حجم فایل بیش از حد مجاز است.");
+   const content=await file.text();
+   if(taskState.fault){
+    if(!confirm("کارهای ذخیره‌شده آسیب دیده‌اند. داده خام را نگه داشته‌ای و بازیابی از فایل را تأیید می‌کنی؟"))return;
+    const run=()=>recoverTasks(window.localStorage,taskState,content);
+    const result=navigator.locks&&typeof navigator.locks.request==="function"
+      ?await navigator.locks.request(TASKS_KEY,{mode:"exclusive"},run):run();
+    taskState=result;tasks=result.tasks;feedback="کارها از فایل بازیابی شدند؛ یک پشتیبان جدید بگیر.";render();return;
+   }
+   let added=0;
+   await changeTasks(draft=>{const imported=importTasks(content,draft);added=imported.added;for(const key of Object.keys(draft))delete draft[key];Object.assign(draft,imported.tasks);return true;},()=>fa(added)+" کار جدید از پشتیبان بازیابی شد.");
+  }catch(err){showFeedback("بازیابی کارها انجام نشد: "+(err?.message||"فایل نامعتبر است."));}
+  return;
+ }
  if(e.target.id!=="backupfile")return;
  const file=e.target.files?.[0];if(!file)return;
  try{
@@ -258,6 +302,13 @@ document.addEventListener("change",async e=>{
   e.target.value="";return;
  }catch(err){feedback="بازیابی انجام نشد: "+(err?.message||"فایل نامعتبر است.");}
  render();
+});
+window.addEventListener("storage",event=>{
+ if(event.key!==TASKS_KEY&&event.key!==null)return;
+ const active=document.activeElement?.closest?.("#taskform,#taskeditform");
+ if(active){showFeedback("کارها در زبانه دیگری تغییر کرده‌اند. صفحه را تازه‌سازی کن.");return;}
+ try{taskState=readTasks(window.localStorage);tasks=taskState.tasks;editingTask=null;feedback="کارها با تغییرات زبانه دیگر هماهنگ شدند.";render();}
+ catch{showFeedback("ارتباط با حافظه کارها قطع شده است.");}
 });
 window.addEventListener("storage",event=>{
  if(event.key!==NOTES_KEY&&event.key!==null)return;
