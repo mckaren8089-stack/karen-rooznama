@@ -68,7 +68,7 @@ test("first online visit installs all app shell assets, including 1405 data",asy
  assert.equal(keys.length,1);
  assert.equal(keys[0],CACHE_VERSION);
  const cache=await h.caches.open(keys[0]);
- for(const path of ["./","./index.html","./app.js","./core.mjs","./notes-store.mjs","./data/years/1405.json","./manifest.webmanifest"]){
+ for(const path of ["./","./index.html","./app.js","./core.mjs","./notes-store.mjs","./tasks.mjs","./tasks-store.mjs","./data/years/1405.json","./manifest.webmanifest"]){
   assert.ok(await cache.match(path),"offline cache missing "+path);
  }
 });
@@ -76,7 +76,7 @@ test("first online visit installs all app shell assets, including 1405 data",asy
 test("offline navigation, date-converter code, and official year dataset all work after install",async()=>{
  const h=harness();await h.lifecycle("install");await h.lifecycle("activate");
  h.report.online=false;
- for(const path of ["./","./index.html","./app.js","./core.mjs","./events.mjs","./notes-store.mjs","./data/years/1405.json","./assets/faravahar.svg"]){
+ for(const path of ["./","./index.html","./app.js","./core.mjs","./events.mjs","./notes-store.mjs","./tasks.mjs","./tasks-store.mjs","./data/years/1405.json","./assets/faravahar.svg"]){
   const mode=path==="./"?"navigate":"same-origin";
   const response=await h.request(path,mode);
   assert.equal(response.status,200,"failed offline "+path);
