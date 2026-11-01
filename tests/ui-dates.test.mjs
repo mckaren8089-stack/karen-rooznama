@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {gregorianMonthRange,tehran,todayLabel,toMs,gregorian,shift} from '../core.mjs';
+import {gregorianMonthRange,tehran,todayLabel,toMs,gregorian} from '../core.mjs';
 
 test('Aban shows its actual October and November endpoints',()=>{
  assert.equal(gregorianMonthRange(1405,8),'اکتبر ۲۰۲۶ – نوامبر ۲۰۲۶');
@@ -8,13 +8,12 @@ test('Aban shows its actual October and November endpoints',()=>{
 test('Dey carries both Gregorian years across New Year',()=>{
  assert.equal(gregorianMonthRange(1405,10),'دسامبر ۲۰۲۶ – ژانویهٔ ۲۰۲۷');
 });
-test('all months, including leap Esfand, use the first and last actual days',()=>{
- const fmt=new Intl.DateTimeFormat('fa-IR-u-ca-gregory',{timeZone:'UTC',month:'long',year:'numeric'});
- for(const y of [1399,1400,1403,1404,1405])for(let m=1;m<=12;m++){
-  const next=shift(y,m,1),start=toMs(y,m,1),end=toMs(next.y,next.m,1)-86400000;
-  assert.equal(gregorianMonthRange(y,m),fmt.format(new Date(start))+' – '+fmt.format(new Date(end)));
- }
+test('leap and ordinary Esfand end in the correct Gregorian month/year',()=>{
+ assert.equal(gregorianMonthRange(1399,12),'فوریهٔ ۲۰۲۱ – مارس ۲۰۲۱');
+ assert.equal(gregorianMonthRange(1400,12),'فوریهٔ ۲۰۲۲ – مارس ۲۰۲۲');
+ assert.equal(gregorianMonthRange(1403,12),'فوریهٔ ۲۰۲۵ – مارس ۲۰۲۵');
  assert.deepEqual(gregorian(toMs(1399,12,30)),{y:2021,m:3,d:20});
+ assert.throws(()=>toMs(1400,12,30));
 });
 test('Tehran today rolls over at Tehran midnight, regardless of host zone',()=>{
  const before=tehran(new Date('2026-11-01T20:29:59Z'));

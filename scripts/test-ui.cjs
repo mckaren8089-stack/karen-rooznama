@@ -84,8 +84,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.locator('#backupfile').setInputFiles({name:'notes.json',mimeType:'application/json',buffer:Buffer.from(notesBackup)});
   assert.equal(await page.locator('.noteitem').count(),1);
   await page.locator('[data-act="today"]').click();
-  // Layout and badge overlap: show both pending-task and note badges.
+  // Layout and badge overlap: wait for the asynchronous save/render.
   await page.locator('[data-act="task-toggle"]').click();
+  await page.locator('.daytask').waitFor();
   for(const width of [320,360,390,1280]){
    await page.setViewportSize({width,height:800});
    const layout=await page.evaluate(()=>{
