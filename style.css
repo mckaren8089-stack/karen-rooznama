@@ -64,3 +64,19 @@
 .logo{padding:0;width:65px;height:65px;min-width:65px;background:transparent;box-shadow:none;border-radius:15px;overflow:hidden}
 .logo img{width:100%;height:100%;object-fit:contain;display:block}
 @media(max-width:370px){.logo{width:56px;height:56px;min-width:56px}}
+
+/* Version 0.5 — lightweight daily tasks alongside day notes. */
+.tasksbox{margin-top:8px}
+.taskitem{display:flex;align-items:center;gap:6px;background:#ffffff08;border-radius:10px;padding:6px;margin-top:7px;min-width:0}
+.taskitem .tasktext{flex:1;overflow-wrap:anywhere;font-size:.9rem;line-height:1.7}
+.taskitem.completed .tasktext{text-decoration:line-through;color:var(--muted)}
+.taskcheck{min-width:44px;min-height:44px;font-size:1.1rem;padding:5px}
+.tasksmall{font-size:.78rem;min-height:44px;padding:5px 8px}
+.taskedit{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;margin-top:8px}
+.taskedit input{min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px;color:var(--fg)}
+.tasktools{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
+.tasktools .btn{flex:1 1 130px;min-height:44px;font-size:.78rem}
+.tasktools button:disabled{opacity:.5;cursor:not-allowed}
+.daytask{position:absolute;bottom:3px;left:5px;min-width:16px;height:16px;line-height:16px;border-radius:6px;background:#a7d8d1;color:#14232a;font-size:.7rem;font-weight:bold;text-align:center}
+.day.chosen .daytask{background:white}
+@media(max-width:400px){.taskedit{grid-template-columns:1fr 1fr}.taskedit input{grid-column:1/-1}.tasksmall{padding:5px}.daytask{left:2px;bottom:2px}}
