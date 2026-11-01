@@ -1,4 +1,4 @@
-import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear,yearCoverage} from "./core.mjs";
+import {months,weekdays,fa,jalali,gregorian,toMs,shift,weekday,tehran,compare,dateKey,eventsOn,isHoliday,loadYear,yearCoverage,gregorianMonthRange,todayLabel} from "./core.mjs";
 import {normalizeNotes,noteCount,sortedDays,exportNotes,importNotes} from "./notes.mjs";
 import {NOTES_KEY,readNotes,commitNotes,restorePrevious,recoverFromExternalFile,savedRawForRescue} from "./notes-store.mjs";
 import {validateTasks,taskCount,exportTasks,importTasks,MAX_TASKS_PER_DAY} from "./tasks.mjs";
@@ -91,9 +91,9 @@ function notesWarning(){
 function header(){
  const now=tehran();
  const tabs=[["month","ماه"],["year","سال"],["convert","تبدیل تاریخ"],["notes","یادداشت‌ها"]];
- return '<div class="wrap"><header class="top"><div class="brand"><span class="logo" aria-hidden="true"><img src="./assets/faravahar.svg" alt="" width="64" height="64"></span><div><h1>روزنمای کارن</h1><div class="muted">تقویم شمسی و میلادی · ساعت ایران</div></div></div><div><span class="clock">'+now.time+'</span> <button data-act="today" class="btn primary">امروز</button></div></header><nav class="tabs" aria-label="ابزارهای روزنما">'+tabs.map(([id,label])=>'<button type="button" data-act="view" data-view="'+id+'" class="'+(view===id?"active":"")+'" aria-current="'+(view===id?"page":"false")+'">'+label+(id==="notes"&&noteCount(notes)?' <span class="tabcount">'+fa(noteCount(notes))+'</span>':'')+'</button>').join("")+'</nav>';
+ return '<div class="wrap"><header class="top"><div class="brand"><span class="logo" aria-hidden="true"><img src="./assets/faravahar.svg" alt="" width="64" height="64"></span><div><h1>روزنمای کارن</h1><div class="muted">تقویم شمسی و میلادی · ساعت ایران</div></div></div><div class="todaybar"><button data-act="today" class="btn primary">امروز</button><div class="todayinfo"><span class="todaydate">'+todayLabel(now.day)+'</span><span class="timeinfo">ساعت تهران <time class="clock" dir="ltr">'+now.time+'</time></span></div></div></header><nav class="tabs" aria-label="ابزارهای روزنما">'+tabs.map(([id,label])=>'<button type="button" data-act="view" data-view="'+id+'" class="'+(view===id?"active":"")+'" aria-current="'+(view===id?"page":"false")+'">'+label+(id==="notes"&&noteCount(notes)?' <span class="tabcount">'+fa(noteCount(notes))+'</span>':'')+'</button>').join("")+'</nav>';
 }
-function nav(title){return '<div class="head"><div class="arrows"><button class="btn" data-act="prev" aria-label="قبلی">❯</button><button class="btn" data-act="next" aria-label="بعدی">❮</button></div><h2>'+title+'</h2></div>';}
+function nav(title,subtitle=""){return '<div class="head"><div class="arrows"><button class="btn" data-act="prev" aria-label="قبلی">❯</button><button class="btn" data-act="next" aria-label="بعدی">❮</button></div><div class="monthtitle"><h2>'+title+'</h2>'+(subtitle?'<div class="muted gregorianrange">'+subtitle+'</div>':'')+'</div></div>';}
 function grid(){
  const start=toMs(month.y,month.m,1),offset=weekday(start),n=shift(month.y,month.m,1),len=(toMs(n.y,n.m,1)-start)/86400000,total=Math.ceil((offset+len)/7)*7;
  let html='<div class="week">'+["ش","ی","د","س","چ","پ","ج"].map(x=>'<span>'+x+'</span>').join("")+'</div><div class="days">';
@@ -144,7 +144,7 @@ function details(){
  const displayed=(weekday(ms)===6?'<div class="event h">جمعه · تعطیلی هفتگی</div>':'')+events.map(x=>'<div class="event'+(x.holiday?' h':'')+'">'+escape(x.title)+'</div>').join("");
  return '<aside class="card details" id="details"><div class="muted">'+weekdays[weekday(ms)]+'</div><div class="datebig">'+fa(selected.d)+'</div><h2>'+months[selected.m-1]+' '+fa(selected.y)+'</h2><div class="muted" dir="ltr">'+escape(gdate(ms))+'</div><div class="rule"></div><h3>مناسبت‌های این روز</h3>'+(displayed||((yearCoverage(selected.y)==="reviewed-nonreligious")?'<p class="muted">مناسبتی ثبت نشده است.</p>':""))+occasionStatus(selected.y)+'<div class="rule"></div><h3>یادداشت‌های '+formatJ(selected)+' <span class="countpill">'+fa(list.length)+'</span></h3><form id="noteform" class="noteform"><input maxlength="140" required aria-label="یادداشت روز" placeholder="یادداشت جدید برای همین روز…"><button type="submit" class="btn primary" '+(noteState.fault?'disabled':'')+'>ثبت</button></form>'+(list.length?noteItems(day,list):'<p class="muted">هنوز یادداشتی برای این روز ثبت نشده است.</p>')+'<button type="button" data-act="viewnotes" class="btn allnotes">دیدن همه یادداشت‌ها ('+fa(noteCount(notes))+')</button>'+taskSection(day)+'</aside>';
 }
-function monthPage(){return '<main class="layout"><section class="card">'+nav(months[month.m-1]+' '+fa(month.y))+grid()+'</section>'+details()+'</main>';}
+function monthPage(){return '<main class="layout"><section class="card">'+nav(months[month.m-1]+' '+fa(month.y),gregorianMonthRange(month.y,month.m))+grid()+'</section>'+details()+'</main>';}
 function yearPage(){return '<main class="layout"><section class="card">'+nav('سال '+fa(month.y))+'<div class="yeargrid">'+months.map((m,i)=>'<button class="monthbtn" data-act="openmonth" data-m="'+(i+1)+'">'+m+'</button>').join("")+'</div></section>'+details()+'</main>';}
 function dateInputs(d){
  return '<div class="converter"><label>سال<input name="y" type="number" inputmode="numeric" min="'+(converterMode==="j2g"?"1200":"1822")+'" max="'+(converterMode==="j2g"?"1600":"2200")+'" required value="'+d.y+'"></label><label>ماه<input name="m" type="number" inputmode="numeric" min="1" max="12" required value="'+d.m+'"></label><label>روز<input name="d" type="number" inputmode="numeric" min="1" max="31" required value="'+d.d+'"></label><button class="btn primary" type="submit">تبدیل تاریخ</button></div>';
@@ -162,7 +162,7 @@ function render(){
  for(const y of years){
   if(!requestedYears.has(y)){requestedYears.add(y);loadYear(y).then(()=>render());}
  }
- root.innerHTML=header()+(feedback?'<div class="message" role="status">'+escape(feedback)+'</div>':'')+notesWarning()+(view==="month"?monthPage():view==="year"?yearPage():view==="convert"?convertPage():notesPage())+'</div>';
+ root.innerHTML=header()+(feedback?'<div class="message" role="status">'+escape(feedback)+'</div>':'')+notesWarning()+(view==="month"?monthPage():view==="year"?yearPage():view==="convert"?convertPage():notesPage())+'<footer class="foot signature" data-version="0.5.1"><bdi>McKaren</bdi> · نسخهٔ '+fa('0.5.1')+'</footer></div>';
 }
 function showDay(){render();if(window.matchMedia&&matchMedia("(max-width:760px)").matches)requestAnimationFrame(()=>document.getElementById("details")?.scrollIntoView({behavior:"smooth",block:"start"}));}
 function changeMonth(step){
@@ -320,5 +320,14 @@ window.addEventListener("storage",event=>{
  }catch{showFeedback("ارتباط با حافظه یادداشت‌ها قطع شده است.");}
 });
 render();
-setInterval(()=>{const c=document.querySelector(".clock");if(c)c.textContent=tehran().time;},30000);
+// Update only live indicators: never replace an in-progress note/task form.
+function refreshToday(){
+ const now=tehran(),date=root.querySelector(".todaydate"),clock=root.querySelector(".clock");
+ if(date)date.textContent=todayLabel(now.day);
+ if(clock)clock.textContent=now.time;
+ for(const cell of root.querySelectorAll(".day[data-ms]"))cell.classList.toggle("now",compare(jalali(+cell.dataset.ms),now.day)===0);
+}
+setInterval(refreshToday,1000);
+window.addEventListener("focus",refreshToday);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshToday();});
 if("serviceWorker" in navigator&&location.protocol==="https:")addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));

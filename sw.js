@@ -1,5 +1,5 @@
 /* Offline-first app shell for Karen Rooznama. No cache access to sibling apps. */
-const VERSION="karen-rooznama-v0.5.0";
+const VERSION="karen-rooznama-v0.5.1";
 const NAVIGATION_TIMEOUT_MS=2500;
 const SHELL=[
  "./","./index.html","./app.js","./style.css","./core.mjs","./events.mjs",

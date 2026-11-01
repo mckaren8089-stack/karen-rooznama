@@ -17,9 +17,19 @@ export function toMs(y,m,d){
 }
 export function shift(y,m,n){const i=y*12+m-1+n;return {y:Math.floor(i/12),m:((i%12)+12)%12+1};}
 export const weekday=ms=>(new Date(ms).getUTCDay()+1)%7;
-export function tehran(){const p=fields(iran,new Date());return {day:jalali(Date.UTC(+p.year,+p.month-1,+p.day)),time:fa(p.hour+":"+p.minute)};}
+export function tehran(now=new Date()){const p=fields(iran,now);return {day:jalali(Date.UTC(+p.year,+p.month-1,+p.day)),time:fa(p.hour+":"+p.minute)};}
 export const dateKey=a=>a.y+"-"+a.m+"-"+a.d;
 export const filterEvents=filterReligious;
 export const eventsOn=sourcedEvents;
 export const isHoliday=(a,ms)=>holidayFromSource(a,ms,weekday);
 export {loadYear,yearCoverage};
+
+// Derive both endpoints from the actual Persian month, including leap Esfand.
+export function gregorianMonthRange(y,m){
+ const start=toMs(y,m,1),next=shift(y,m,1),end=toMs(next.y,next.m,1)-DAY;
+ const fmt=new Intl.DateTimeFormat("fa-IR-u-ca-gregory",{timeZone:"UTC",month:"long",year:"numeric"});
+ return fmt.format(new Date(start))+" – "+fmt.format(new Date(end));
+}
+export function todayLabel(day){
+ return weekdays[weekday(toMs(day.y,day.m,day.d))]+"، "+fa(day.d)+" "+months[day.m-1]+" "+fa(day.y);
+}

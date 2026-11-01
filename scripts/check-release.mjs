@@ -4,10 +4,14 @@ import {join} from "node:path";
 
 const worker=readFileSync("sw.js","utf8");
 const manifest=JSON.parse(readFileSync("manifest.webmanifest","utf8"));
+const app=readFileSync("app.js","utf8");
 const index=readFileSync("index.html","utf8");
 const match=worker.match(/^const VERSION="(karen-rooznama-v(\d+\.\d+\.\d+))";$/m);
 assert.ok(match,"Service Worker must own a valid, single semantic cache version");
 const version=match[2],cache=match[1];
+assert.ok(app.includes('data-version="'+version+'"'),"Visible footer version must match Service Worker");
+assert.ok(app.includes("fa('"+version+"')"),"Visible Persian version must match release");
+assert.match(app,/<footer[^>]*>[\s\S]*?<bdi>McKaren<\/bdi>/,"Stable product signature required");
 assert.equal((worker.match(/^const VERSION=/gm)||[]).length,1,"single runtime version authority");
 assert.equal(manifest.id,"./","Never silently change installed PWA identity");
 assert.equal(manifest.scope,"./","PWA must stay scoped to Rooznama and not Karen Fuse");
