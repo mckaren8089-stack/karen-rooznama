@@ -26,6 +26,8 @@ jobs:
       - run: node --check events.mjs
       - run: node --check notes.mjs
       - run: node --check notes-store.mjs
+      - run: node --check tasks.mjs
+      - run: node --check tasks-store.mjs
       - run: node --check scripts/check-official-source.mjs
       - run: node --check sw.js
       - run: node --test tests/*.test.mjs
